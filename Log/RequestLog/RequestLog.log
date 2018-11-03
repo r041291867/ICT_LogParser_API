@@ -1,0 +1,8 @@
+INFO: 07-18 15:01:08: loggings.py:110 * 123145465540608 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 129ms for 127.0.0.1
+INFO: 07-18 15:01:20: loggings.py:110 * 123145465540608 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 97ms for 127.0.0.1
+INFO: 07-18 15:05:29: loggings.py:110 * 123145535799296 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 85ms for 127.0.0.1
+INFO: 07-18 15:05:31: loggings.py:110 * 123145541054464 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 82ms for 127.0.0.1
+INFO: 07-18 15:06:08: loggings.py:110 * 123145472892928 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 79ms for 127.0.0.1
+INFO: 07-18 15:18:05: loggings.py:110 * 123145496539136 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 74ms for 127.0.0.1
+INFO: 07-18 15:18:10: loggings.py:110 * 123145501794304 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 77ms for 127.0.0.1
+INFO: 07-18 15:20:10: loggings.py:110 * 123145511895040 GET "/ConvenienceStore/CustomersDailyReport" Status Code[200] in 78ms for 127.0.0.1
