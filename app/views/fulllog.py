@@ -9,22 +9,34 @@ import time
 import logging
 from datetime import date,datetime as dt, timedelta
 import codecs, hashlib, os, shutil
-
+from app.utils import cache_key
 
 app = Flask(__name__)
 api = Api(app=app)
 
-@restapi.resource('/data_batch/<string:filename>')
-class DataApiBatch(Resource):
+@restapi.resource('/fulllog')
+# @restapi.resource('/Data')
+class DataApi(Resource):
 
-	def get(self,filename):
-		
-		path=os.path.abspath("..")+"fulllog/"		
+	def get(self):
+		file = request.files['file']
+		filename=file.filename
+
+		# check if file exist 
+		if(filename==''):return({"result":"No file."})
+		# check file type
+		if(filename.rsplit('.',1)[1].lower()!='txt'):return({"result":"File type should be txt."})
+
+		# set file path
+		path=os.path.abspath("..")+"fulllog/"
+		# save file 
+		file.save(os.path.join(path,filename))
+		# open file
 		fp = open(path+filename, "r")
-		line = fp.readline()
 
+		line = fp.readline()
 		machine = ''
-		sn_code = ''		#儲存機台編號及sn碼
+		sn_code = ''		
 		EndTime = ''
 		board = ''
 		isAnalogPowered=False
@@ -33,7 +45,7 @@ class DataApiBatch(Resource):
 			else :
 				line = line.strip('{@\n}')
 				sp = line.split("|")
-				db_sp = [] 	 		#要存入資料庫內的list
+				db_sp = [] 	
 				
 				while '' in sp: sp.remove('')
 				#處理要寫入ict_result資料
@@ -51,6 +63,7 @@ class DataApiBatch(Resource):
 					sn_code = sp[1]
 					db_sp.append(sp[1])
 					db_sp.append(sp[2])
+					
 					#日期格式轉換
 					Btime = dt.strptime('20'+sp[3], '%Y%m%d%H%M%S')     #BeginTime
 					Etime = dt.strptime('20'+sp[9], '%Y%m%d%H%M%S')		#EndTime
@@ -69,14 +82,14 @@ class DataApiBatch(Resource):
 				elif (len(sp)>0 and sp[0] == 'BLOCK') :
 					db_sp.append(sp[1])
 					db_sp.append(sp[2])
-					# 若sp第一個元素包含(pwr_check)字串則為power_on_result
+					# 若sp第一個元素為pwr_check、pwr_check_pro、pwr_check_iso則為power_on_result
 					if(db_sp[0]=='pwr_check' or db_sp[0]=='pwr_check_pro' or db_sp[0]=='pwr_check_iso') : isPowerOn=True
 					else : isPowerOn=False 
 					line = fp.readline()
 					while line :		#block內可能有好幾個不同的測試
 
 						if (line == '}\n'): 
-							if (db_sp[0] == 'pwr_check'):     #若讀到pwr_check結尾}則將isAnalogPowered改true,isPowerOn改為false
+							if (db_sp[0] == 'pwr_check'):     #若讀到pwr_check結尾}代表接下來遇到的A-MEA皆屬於AnalogPowered測試結果
 								isAnalogPowered=True     
 								isPowerOn=False
 							break
@@ -145,6 +158,7 @@ class DataApiBatch(Resource):
 									elif(db_sp[0]=='Measured'):
 										db_sp_new.append(db_sp[1])
 										print(db_sp_new)
+										# 處理多筆tjet測試fail log
 										del db_sp_new[6:9]
 										
 									elif('--' in db_sp[0]):break
@@ -177,6 +191,7 @@ class DataApiBatch(Resource):
 								db_sp_new.append(test_time)
 								db_sp_new.append(db_sp[0].replace('(','').replace(')',''))
 								print(db_sp_new)
+								# 處理多筆PF測試fail log
 								del db_sp_new[4:7]
 							elif ('End' in sp[1] or 'PIN' in sp[0]):
 								break
@@ -204,7 +219,7 @@ class DataApiBatch(Resource):
 								sp = line.split("|")
 								db_sp = [] 
 								db_sp = sp[1].split()
-																# print(db_sp)
+																
 								#陣列第一個元素為RPT且第二個元素用空白切割後陣列長度大於0
 								if (sp[0]=='RPT' and len(db_sp)>0):
 									
@@ -213,7 +228,7 @@ class DataApiBatch(Resource):
 										line=fp.readline().strip('{@\n}')
 										str_test_time=(line.split('|'))[1].replace('}','')
 										test_time=dt.strptime(str_test_time,'%a %b %d %H:%M:%S %Y')
-										print(test_time)
+								
 									#陣列第一個元素為Short或Open
 									elif (db_sp[0]=='Short' or db_sp[0]=='Open'):
 										db_sp_new = [machine,sn_code,EndTime,test_time]
@@ -280,17 +295,29 @@ class DataApiBatch(Resource):
 		self.parser = reqparse.RequestParser()
 		self.parser.add_argument('file', required=True, type=FileStorage, location='files')
 
-	def post(self,filename):
+	def post(self):
+		file = request.files['file']
+		filename=file.filename
+
+		# check if file exist 
+		if(filename==''):return({"result":"No file."})
+		# check file type
+		if(filename.rsplit('.',1)[1].lower()!='txt'):return({"result":"File type should be txt."})
+
+		# set file path
 		path=os.path.abspath("..")+"fulllog/"
+		# save file 
+		file.save(os.path.join(path,filename))
+		
 		result = {"result":"Fail"}
 		WriteDbResult = False
-		insert_list=[]
+		insert_list=[]  #insert sql list
 
 		try:
 			fp = open(path+filename, "r")
 			line = fp.readline()
 			machine = ''
-			sn_code = ''        #儲存機台編號及sn碼
+			sn_code = ''        
 			EndTime = ''
 			board = ''
 			isAnalogPowered=False
@@ -299,7 +326,7 @@ class DataApiBatch(Resource):
 				else :
 					line = line.strip('{@\n}') #去除外圍的括號與＠
 					sp = line.split("|")
-					db_sp = [] 			#要存入資料庫內的list
+					db_sp = [] 
 					
 					#去除空字串
 					while '' in sp: sp.remove('')
@@ -463,7 +490,6 @@ class DataApiBatch(Resource):
 									sp = line.split("|") 									
 									db_sp = [] 
 									db_sp = sp[1].split()
-									
 
 									#陣列第一個元素為RPT且第二個元素用空白切割後陣列長度大於0
 									if (sp[0]=='RPT' and len(db_sp)>0):
@@ -474,7 +500,6 @@ class DataApiBatch(Resource):
 											line=fp.readline().strip('{@\n}')
 											str_test_time=(line.split('|'))[1].replace('}','')
 											test_time=dt.strptime(str_test_time,'%a %b %d %H:%M:%S %Y')
-											
 										
 										#陣列第一個元素為Short或Open
 										elif (db_sp[0]=='Short' or db_sp[0]=='Open'):
@@ -523,7 +548,6 @@ class DataApiBatch(Resource):
 						else : db_sp_new.append(sp[4])
 						db_sp_new.append(sp[1])
 						db_sp_new.append(EndTime)
-						# WriteDbResult = self.WriteToDb(db_sp_new,6)
 						insert_list.append(self.CombineSqlStr(db_sp_new,6))
 					
 					# 上電測試-BoundaryScan result
@@ -544,10 +568,11 @@ class DataApiBatch(Resource):
 			
 
 		except Exception as err:
+			# print(filename)
 			print("[error]: {0}".format(err))
 		
 		if WriteDbResult :
-			#移動處理完的檔案到/processedlog資料夾中
+			#移動處理完的檔案到上一層的processedlog資料夾中
 			shutil.move(path+filename,os.path.abspath("..")+"processedlog/")
 			result['result'] = 'Success'
 		return result
@@ -555,10 +580,10 @@ class DataApiBatch(Resource):
 	def CheckRepeat(self,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project.ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")		
+		cursor.execute("select count(*) from ICT_Project.ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
-	
+
 	def CombineSqlStr(self,lists,type):
 		#type 0:  log檔基本資訊
 		#type 1:  jumper測試
@@ -596,7 +621,7 @@ class DataApiBatch(Resource):
 			Items = 'insert ignore into ICT_Project.analog_powered_result(machine,sn,component,block_status,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
 		elif (type == 9) :
 			Items = 'insert ignore into ICT_Project.pins_check_result(machine,sn,end_time,status,fail_time,BRC) values ('
-		
+			
 		
 		for item in lists:
 			if str(item)=="None":Items=Items+'null'+','
@@ -605,13 +630,12 @@ class DataApiBatch(Resource):
 		Items += ')'
 		return(Items)
 
-
 	def WriteToDb(self,insert_list):
 		try :
 			print(insert_list)
 			conn = mysql2.connect()
 			cursor = conn.cursor()
-			
+
 			for item in insert_list:
 				cursor.execute(item)
 
@@ -632,9 +656,8 @@ class DataApiBatch(Resource):
 				conn.rollback()
 			except: pass
 		return False
-
 		
-api.add_resource(DataApiBatch, '/data_batch/')
+api.add_resource(DataApi, '/fulllog/')
 
 
 if __name__ == '__main__':
