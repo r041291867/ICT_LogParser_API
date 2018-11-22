@@ -70,9 +70,6 @@ class DataApi(Resource):
 					Ltime = dt.strptime('20'+logtime, '%Y%m%d%H%M%S')   #LogTime
 					EndTime = Etime
 					
-					# check if file is repeat
-					if(self.CheckRepeat(machine,sn_code,Etime)):return({"result":filename+" is duplicated"})
-
 					db_sp.append(Btime)
 					db_sp.append(Etime)
 					db_sp.append(Ltime)
@@ -348,6 +345,10 @@ class DataApi(Resource):
 						Etime = dt.strptime('20'+sp[9], '%Y%m%d%H%M%S')		#EndTime
 						Ltime = dt.strptime('20'+logtime, '%Y%m%d%H%M%S')   #LogTime
 						EndTime = Etime
+		
+						# check if file is repeat
+						if(self.CheckRepeat(machine,sn_code,Etime)):return({"result":filename+" is duplicated"})
+
 						db_sp.append(Btime)
 						db_sp.append(Etime)
 						db_sp.append(Ltime)
@@ -401,6 +402,10 @@ class DataApi(Resource):
 									elif(isAnalogPowered and db_sp_new[4] == 'A-MEA'):
 										del db_sp_new[4]     #analog powered不需要test_type
 										dbType=8
+
+									if(dbType==4 and board=='73-18275-04'):
+										dbType=41
+										db_sp_new.append(board)					
 
 									insert_list.append(self.CombineSqlStr(db_sp_new,dbType))
 									
@@ -592,6 +597,7 @@ class DataApi(Resource):
 		#type 3:  testjet
 		#type 31: testjet fail RPT
 		#type 4:  analog
+		#type 41: analog_18275
 		#type 5:  power on 
 		#type 6:  digital
 		#type 7:  boundary scan
@@ -611,6 +617,8 @@ class DataApi(Resource):
 			Items = 'insert ignore into ICT_Project.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,measured) values ('		
 		elif (type == 4) :
 			Items = 'insert ignore into ICT_Project.analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
+		elif (type == 41):
+			Items = 'insert ignore into ICT_Project_V2.analog_result_18275(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('		
 		elif (type == 5) :
 			Items = 'insert ignore into ICT_Project.power_on_result(machine,sn,power_check_type,block_status,status,measured,power_check,limit_type,nominal,high_limit,low_limit,end_time) values ('				
 		elif (type == 6) :

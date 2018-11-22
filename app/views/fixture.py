@@ -38,6 +38,18 @@ class Fixture(Resource):
 			
 			if (len(sp) > 0 and sp[0] == 'END'): break
 			elif (len(sp) > 0 and sp[0] == 'BOARD') : board=sp[1].replace('"','') 
+			# board outline
+			elif (len(sp) >0 and sp[0]=='OUTLINE'):
+				for x in range(3):
+					line=fp.readline()
+				line = line.strip('{\n}')
+				sp=line.split(',')
+				db_sp=[]
+				db_sp.append(board)
+				db_sp.append(sp[0].strip())
+				db_sp.append(sp[1].strip())
+				print(db_sp)
+
 			elif (len(sp) > 0 and (sp[0] == 'NODE')):
 
 				node=sp[1].replace('"','')
@@ -210,6 +222,18 @@ class Fixture(Resource):
 				
 				if (len(sp) > 0 and sp[0] == 'END'): break
 				elif (len(sp) > 0 and sp[0] == 'BOARD') : board=sp[1].replace('"','') 
+				# board outline
+				elif (len(sp) >0 and sp[0]=='OUTLINE'):
+					for x in range(3):
+						line=fp.readline()
+					line = line.strip('{\n}')
+					sp=line.split(',')
+					db_sp=[]
+					db_sp.append(board)
+					db_sp.append(sp[0].strip())
+					db_sp.append(sp[1].strip())
+					WriteDbResult = self.WriteToDb(db_sp,1)
+
 				elif (len(sp) > 0 and (sp[0] == 'NODE')):
 
 					node=sp[1].replace('"','')
@@ -354,10 +378,12 @@ class Fixture(Resource):
 		return result
 
 	def WriteToDb(self,lists,type):
-		#type 0:  log檔基本資訊
+		# type 0: log檔基本資訊
+		# type 1: board邊界資料
 		if (type == 0) :
 			Items = 'insert ignore into ICT_Project.fixture(board,node,pins,probes,x,y,status) values ('
-		
+		elif (type == 1) :
+			Items = 'insert ignore into ICT_Project_V2.board(board,x,y) values ('
 		
 		for item in lists:
 			if str(item)=="None":Items=Items+'null'+','

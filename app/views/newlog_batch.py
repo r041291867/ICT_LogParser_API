@@ -161,14 +161,14 @@ class NewlogBatch(Resource):
 	def CheckRepeat(self,board,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
+		cursor.execute("select count(*) from ICT_Project_V2.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
 
 	def WriteToDb(self,lists):
 		#type 0:  log檔基本資訊
 		
-		Items = 'insert ignore into ICT_Project.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
+		Items = 'insert ignore into ICT_Project_V2.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
 		
 		
 		for item in lists:
