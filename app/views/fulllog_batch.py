@@ -382,7 +382,7 @@ class DataApiBatch(Resource):
 										dbType=41
 										db_sp_new.append(board)
 
-									insert_list.append(self.CombineSqlStr(db_sp_new,dbType,board))
+									insert_list.append(self.CombineSqlStr(db_sp_new,dbType))
 									
 								line = fp.readline()
 
@@ -563,7 +563,7 @@ class DataApiBatch(Resource):
 	def CheckRepeat(self,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project_V2.ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")		
+		cursor.execute("select count(*) from ICT_Project.ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")		
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
 	
@@ -582,31 +582,31 @@ class DataApiBatch(Resource):
 		#type 8:  analog_powered
 		#type 9:  PF test
 		if (type == 0) :
-			Items = 'insert ignore into ICT_Project_V2.ict_result(board,operator,machine,sn,status,start_time,end_time,log_time) values ('
+			Items = 'insert ignore into ICT_Project.ict_result(board,operator,machine,sn,status,start_time,end_time,log_time) values ('
 		elif (type == 1) :
-			Items = 'insert ignore into ICT_Project_V2.preshort_result(machine,sn,component,status,measured,limit_type,high_limit,low_limit,end_time) values ('
+			Items = 'insert ignore into ICT_Project.preshort_result(machine,sn,component,status,measured,limit_type,high_limit,low_limit,end_time) values ('
 		elif (type == 2) :
-			Items = 'insert ignore into ICT_Project_V2.open_short_result(machine,sn,status,end_time) values ('
+			Items = 'insert ignore into ICT_Project.open_short_result(machine,sn,status,end_time) values ('
 		elif (type == 21) :
-			Items = 'insert ignore into ICT_Project_V2.open_short_fail(machine,sn,end_time,fail_time,fail_type,fail_no,from_point,from_BRC,from_ohms,end_point,end_BRC,end_ohms) values ('
+			Items = 'insert ignore into ICT_Project.open_short_fail(machine,sn,end_time,fail_time,fail_type,fail_no,from_point,from_BRC,from_ohms,end_point,end_BRC,end_ohms) values ('
 		elif (type == 3) :
-			Items = 'insert ignore into ICT_Project_V2.testjet_result(machine,sn,status,device,end_time,board) values ('
+			Items = 'insert ignore into ICT_Project.testjet_result(machine,sn,status,device,end_time,board) values ('
 		elif (type == 31) :
-			Items = 'insert ignore into ICT_Project_V2.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,measured) values ('		
+			Items = 'insert ignore into ICT_Project.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,measured) values ('		
 		elif (type == 4) :
-			Items = 'insert ignore into ICT_Project_V2.analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('	
+			Items = 'insert ignore into ICT_Project.analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('	
 		elif (type == 41):
-			Items = 'insert ignore into ICT_Project_V2.analog_result_18275(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('
+			Items = 'insert ignore into ICT_Project.analog_result_18275(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('
 		elif (type == 5) :
-			Items = 'insert ignore into ICT_Project_V2.power_on_result(machine,sn,power_check_type,block_status,status,measured,power_check,limit_type,nominal,high_limit,low_limit,end_time) values ('				
+			Items = 'insert ignore into ICT_Project.power_on_result(machine,sn,power_check_type,block_status,status,measured,power_check,limit_type,nominal,high_limit,low_limit,end_time) values ('				
 		elif (type == 6) :
-			Items = 'insert ignore into ICT_Project_V2.digital_result(machine,sn,component,status,end_time) values ('
+			Items = 'insert ignore into ICT_Project.digital_result(machine,sn,component,status,end_time) values ('
 		elif (type == 7) :
-			Items = 'insert ignore into ICT_Project_V2.boundary_scan_result(machine,sn,component,status,end_time) values ('
+			Items = 'insert ignore into ICT_Project.boundary_scan_result(machine,sn,component,status,end_time) values ('
 		elif (type == 8) :
-			Items = 'insert ignore into ICT_Project_V2.analog_powered_result(machine,sn,component,block_status,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
+			Items = 'insert ignore into ICT_Project.analog_powered_result(machine,sn,component,block_status,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
 		elif (type == 9) :
-			Items = 'insert ignore into ICT_Project_V2.pins_check_result(machine,sn,end_time,status,fail_time,BRC) values ('
+			Items = 'insert ignore into ICT_Project.pins_check_result(machine,sn,end_time,status,fail_time,BRC) values ('
 		
 		
 		for item in lists:
