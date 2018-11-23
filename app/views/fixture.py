@@ -383,7 +383,7 @@ class Fixture(Resource):
 		if (type == 0) :
 			Items = 'insert ignore into ICT_Project.fixture(board,node,pins,probes,x,y,status) values ('
 		elif (type == 1) :
-			Items = 'insert ignore into ICT_Project_V2.board(board,x,y) values ('
+			Items = 'insert ignore into ICT_Project.board(board,x,y) values ('
 		
 		for item in lists:
 			if str(item)=="None":Items=Items+'null'+','

@@ -53,9 +53,13 @@ class Newlog(Resource):
 				elif (sp[0].strip() == 'Cell_No'):db_sp.append(sp[1].strip())
 				elif (sp[0].strip() == 'Status'):db_sp.append(sp[1].strip())
 				elif (sp[0].strip() == 'Fail_code'):db_sp.append(sp[1].strip())
-				elif (sp[0].strip() == 'Start_time'):db_sp.append(sp[1].strip())
+				elif (sp[0].strip() == 'Start_time'):
+					strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+					start_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
+					db_sp.append(start_time)
 				elif (sp[0].strip() == 'End_time'):
-					end_time=sp[1].strip()
+					strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+					end_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
 					db_sp.append(end_time)
 				elif (sp[0].strip() == 'Test_time'):db_sp.append(sp[1].strip())				
 				elif (sp[0].strip() == 'Operator'):db_sp.append(sp[1].strip())
@@ -132,9 +136,13 @@ class Newlog(Resource):
 					elif (sp[0].strip() == 'Cell_No'):db_sp.append(sp[1].strip())
 					elif (sp[0].strip() == 'Status'):db_sp.append(sp[1].strip())
 					elif (sp[0].strip() == 'Fail_code'):db_sp.append(sp[1].strip())
-					elif (sp[0].strip() == 'Start_time'):db_sp.append(sp[1].strip())
+					elif (sp[0].strip() == 'Start_time'):
+						strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+						start_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
+						db_sp.append(start_time)
 					elif (sp[0].strip() == 'End_time'):
-						end_time=sp[1].strip()
+						strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+						end_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
 						db_sp.append(end_time)
 					elif (sp[0].strip() == 'Test_time'):db_sp.append(sp[1].strip())				
 					elif (sp[0].strip() == 'Operator'):db_sp.append(sp[1].strip())

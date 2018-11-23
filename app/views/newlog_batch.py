@@ -48,9 +48,13 @@ class NewlogBatch(Resource):
 				elif (sp[0].strip() == 'Cell_No'):db_sp.append(sp[1].strip())
 				elif (sp[0].strip() == 'Status'):db_sp.append(sp[1].strip())
 				elif (sp[0].strip() == 'Fail_code'):db_sp.append(sp[1].strip())
-				elif (sp[0].strip() == 'Start_time'):db_sp.append(sp[1].strip())
+				elif (sp[0].strip() == 'Start_time'):
+					strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+					start_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
+					db_sp.append(start_time)
 				elif (sp[0].strip() == 'End_time'):
-					end_time=sp[1].strip()
+					strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+					end_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')
 					db_sp.append(end_time)
 				elif (sp[0].strip() == 'Test_time'):db_sp.append(sp[1].strip())				
 				elif (sp[0].strip() == 'Operator'):db_sp.append(sp[1].strip())
@@ -116,9 +120,13 @@ class NewlogBatch(Resource):
 					elif (sp[0].strip() == 'Cell_No'):db_sp.append(sp[1].strip())
 					elif (sp[0].strip() == 'Status'):db_sp.append(sp[1].strip())
 					elif (sp[0].strip() == 'Fail_code'):db_sp.append(sp[1].strip())
-					elif (sp[0].strip() == 'Start_time'):db_sp.append(sp[1].strip())
+					elif (sp[0].strip() == 'Start_time'):
+						strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+						start_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')		
+						db_sp.append(start_time)
 					elif (sp[0].strip() == 'End_time'):
-						end_time=sp[1].strip()
+						strtime=(sp[1]+sp[2]+sp[3]).strip().replace(' ','')
+						end_time=dt.strptime(strtime.replace('-',''),'%Y%m%d%H%M%S')						
 						db_sp.append(end_time)
 					elif (sp[0].strip() == 'Test_time'):db_sp.append(sp[1].strip())				
 					elif (sp[0].strip() == 'Operator'):db_sp.append(sp[1].strip())
@@ -161,14 +169,14 @@ class NewlogBatch(Resource):
 	def CheckRepeat(self,board,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project_V2.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
+		cursor.execute("select count(*) from ICT_Project.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
 
 	def WriteToDb(self,lists):
 		#type 0:  log檔基本資訊
 		
-		Items = 'insert ignore into ICT_Project_V2.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
+		Items = 'insert ignore into ICT_Project.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
 		
 		
 		for item in lists:
