@@ -152,11 +152,12 @@ class DataApi(Resource):
 										db_sp_new.append(db_sp[1].replace('#',''))
 									elif(db_sp[0]=='Pin' and len(db_sp_new)<8):
 										db_sp_new.append(db_sp[1])
+										db_sp_new.append(db_sp[3])
 									elif(db_sp[0]=='Measured'):
 										db_sp_new.append(db_sp[1])
+										db_sp_new.append(db_sp[3])
 										print(db_sp_new)
-										# 處理多筆tjet測試fail log
-										del db_sp_new[6:9]
+										del db_sp_new[6:11]
 										
 									elif('--' in db_sp[0]):break
 									
@@ -614,7 +615,7 @@ class DataApi(Resource):
 		elif (type == 3) :
 			Items = 'insert ignore into ICT_Project.testjet_result(machine,sn,status,device,end_time,board) values ('
 		elif (type == 31) :
-			Items = 'insert ignore into ICT_Project.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,measured) values ('		
+			Items = 'insert ignore into ICT_Project.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,node,measured,BRC) values ('		
 		elif (type == 4) :
 			Items = 'insert ignore into ICT_Project.analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
 		elif (type == 41):

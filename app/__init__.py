@@ -4,6 +4,7 @@ import flask
 from . import extensions, config
 from . import views
 from . import loggings
+from flask_cors import CORS
 #from datetime import timedelta
 #from flask import Flask, session, render_template
 
@@ -20,11 +21,12 @@ def create_app(config_name='default'):
 
 	app = flask.Flask(__name__)
 
+
 	# set the config vars using the config name and current_app
 	config.config[config_name](app)
 	#print(app.config['MONGODB_HOST'])
 
-
+	CORS(app)
 	SetUrlMap(app)
 	register_extensions(app)
 	register_blueprints(app)

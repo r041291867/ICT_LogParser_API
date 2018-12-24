@@ -30,26 +30,29 @@ class Wirelist(Resource):
 			if (len(sp)==0 or sp[0] == 'end'): line = fp.readline() 
 			else :
 				if (sp[0] == 'test'):
-					if (sp[1]=='analog') :
-						test_type=sp[1]
-						if(sp[2]!='.discharge'):
-							component=sp[2]
-							subtest=''
-							line=fp.readline()
-							while line:
-								sp = line.replace('"','').split()
-								if (len(sp)>0):
-									if(sp[0]=='subtest'):
-										subtest=sp[1]
-
-									elif (sp[0]=='wire'):
-										db_sp=(board,test_type,component,subtest,sp[1],sp[3])
-										print(db_sp)
-									
-									elif(sp[0]=='end' and sp[1]=='test'):break
-
-								line=fp.readline()
+					#if (sp[1]=='analog') :
+					test_type=sp[1]
+					if (sp[1]=='powered' and sp[2]=='shorts'):
+						test_type=sp[1]+' '+sp[2]
+						#component=sp[3]
+					if(sp[2]!='.discharge'):
+						component=sp[len(sp)-1]
+						subtest=''
 						line=fp.readline()
+						while line:
+							sp = line.replace('"','').split()
+							if (len(sp)>0):
+								if(sp[0]=='subtest'):
+									subtest=sp[1]
+
+								elif (sp[0]=='wire'):
+									db_sp=(board,test_type,component,subtest,sp[1],sp[3])
+									print(db_sp)
+								
+								elif(sp[0]=='end' and sp[1]=='test'):break
+
+							line=fp.readline()
+					line=fp.readline()
 	
 			line = fp.readline()
 		fp.close()
@@ -80,27 +83,33 @@ class Wirelist(Resource):
 				if (len(sp)==0 or sp[0] == 'end'): line = fp.readline() 
 				else :
 					if (sp[0] == 'test'):
-						if (sp[1]=='analog') :
-							test_type=sp[1]
-							if(sp[2]!='.discharge'):
-								component=sp[2]
-								subtest=''
-								line=fp.readline()
-								while line:
-									sp = line.replace('"','').split()
-									if (len(sp)>0):
-										if(sp[0]=='subtest'):
-											subtest=sp[1]
 
-										elif (sp[0]=='wire'):
-											db_sp=(board,test_type,component,subtest,sp[1],sp[3])
-											WriteDbResult = self.WriteToDb(db_sp,0)
-										
-										elif(sp[0]=='end' and sp[1]=='test'):break
-
-									line=fp.readline()
+						test_type=sp[1]
+						if (sp[1]=='powered' and sp[2]=='shorts'):
+							test_type=sp[1]+' '+sp[2]
+						
+						if(sp[2]!='.discharge'):
+							component=sp[len(sp)-1]
+							subtest=''
 							line=fp.readline()
-		
+							while line:
+								sp = line.replace('"','').split()
+								if (len(sp)>0):
+									if(sp[0]=='subtest'):
+										subtest=sp[1]
+
+									elif(sp[0]=='device'):
+										component=(sp[1].split(';'))[0]
+
+									elif (sp[0]=='wire'):
+										db_sp=(board,test_type,component,subtest,sp[1],sp[3])
+										WriteDbResult = self.WriteToDb(db_sp,0)
+									
+									elif(sp[0]=='end' and sp[1]=='test'):break
+									
+								line=fp.readline()
+						line=fp.readline()
+	
 				line = fp.readline()
 			fp.close()
 
