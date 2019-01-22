@@ -641,7 +641,7 @@ class DataApi(Resource):
 
 	def WriteToDb(self,insert_list):
 		try :
-			print(insert_list)
+			# print(insert_list)
 			conn = mysql2.connect()
 			cursor = conn.cursor()
 

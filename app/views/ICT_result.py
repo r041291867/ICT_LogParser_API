@@ -90,11 +90,8 @@ class PinsDetail(Resource):
     #         '''
     #     print(sql)
 
-    #     conn = mysql2.connect()
-    #     cursor = conn.cursor()
     #     try:
-    #         cursor.execute(sql)
-    #         rows = cursor.fetchall()
+    #         rows=Common.FetchDB(sql)
     #         print(rows)
     #         # data exist
     #         if len(rows)>0:
@@ -109,11 +106,9 @@ class PinsDetail(Resource):
     #                     'totalfailpin': row['totalfailpin'],
     #                 })
     #     except Exception as inst:
-    #         logging.getLogger('error_Logger').error('ICT Result Query Err')
+    #         logging.getLogger('error_Logger').error('ICT Result Err')
     #         logging.getLogger('error_Logger').error(inst)
-    #     finally:
-    #         cursor.close()
-    #         conn.close()
+
     #     response = jsonify(result)
     #     response.status_code=200
     #     return result
@@ -160,12 +155,8 @@ class PinsDetailBarChart(Resource):
     #     sql = query + ''' group by fixture_id,bu,board,program_id) a '''
     #     print(sql)
 
-    #     conn = mysql2.connect()
-    #     cursor = conn.cursor()
-
     #     try:
-    #         cursor.execute(sql)
-    #         rows = cursor.fetchall()
+    #         rows=Common.FetchDB(sql)
     #         print(rows)
     #         # data exist
     #         if len(rows)>0:
@@ -175,11 +166,9 @@ class PinsDetailBarChart(Resource):
     #                     'totalfailpin': str(row['totalfailpin'])
     #                 })
     #     except Exception as inst:
-    #         logging.getLogger('error_Logger').error('ICT Result Query Err')
+    #         logging.getLogger('error_Logger').error('ICT Result Err')
     #         logging.getLogger('error_Logger').error(inst)
-    #     finally:
-    #         cursor.close()
-    #         conn.close()
+
     #     response = jsonify(result)
     #     response.status_code=200
     #     return result
@@ -205,6 +194,7 @@ class ProgramDetail(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+        
         # result = []
 
         # # 取得request參數
@@ -248,15 +238,10 @@ class ProgramDetail(Resource):
         #     ) a group by fixture_id
         # ) b on a.fixture_id=b.fixture_id '''
 
-
         # print(sql)
 
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
-
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     print(rows)
         #     # data exist
         #     if len(rows)>0:
@@ -270,11 +255,9 @@ class ProgramDetail(Resource):
         #                 'totalfailprogram': row['totalfailprogram'],
         #             })
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -332,15 +315,10 @@ class ProgramDetailRC(Resource):
         #     ) a group by fixture_id
         # ) b on a.fixture_id=b.fixture_id '''
 
-
         # print(sql)
 
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
-
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     print(rows)
         #     # data exist
         #     if len(rows)>0:
@@ -354,11 +332,9 @@ class ProgramDetailRC(Resource):
         #                 'totalfailprogram': row['totalfailprogram'],
         #             })
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -373,6 +349,8 @@ class ProgramDetailBarChart(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+        
+
         # result = []
 
         # # 取得request參數
@@ -404,12 +382,8 @@ class ProgramDetailBarChart(Resource):
         # sql = query + ''' group by bu'''
         # print(sql)
 
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
-
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     print(rows)
         #     # data exist
         #     if len(rows)>0:
@@ -419,11 +393,9 @@ class ProgramDetailBarChart(Resource):
         #                 'totalfailprogram': row['totalfailprogram'],
         #             })
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -460,13 +432,9 @@ class ProgramCompDetail(Resource):
         sql = query + ''' group by component,cpk '''
         print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
 
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            print(rows)
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -477,11 +445,9 @@ class ProgramCompDetail(Resource):
                         'yield':'None'
                     })
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -513,6 +479,7 @@ class ProgramCompDetailRC(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+        
         # result = []
 
         # # 取得request參數
@@ -532,12 +499,9 @@ class ProgramCompDetailRC(Resource):
         # sql = query + ''' group by component,cpk '''
         # print(sql)
 
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
 
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     print(rows)
         #     # data exist
         #     if len(rows)>0:
@@ -549,11 +513,9 @@ class ProgramCompDetailRC(Resource):
         #                 'yield':'None'
         #             })
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -583,12 +545,9 @@ class ProgramCompDetailLineGraph(Resource):
 
         print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
 
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
 
             # data exist
             if len(rows)>0:
@@ -601,11 +560,9 @@ class ProgramCompDetailLineGraph(Resource):
                         'measured': str(row['measured']),
                     })
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -618,14 +575,8 @@ class FailNode(Resource):
         # 取得request參數
         fromTime = request.args.get('startTime','')
         endTime = request.args.get('endTime','')
-        
-        conn = mysql2.connect()
-        cursor = conn.cursor()
-        cursor.execute("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
-        default_fixtureId=cursor.fetchall()
-        cursor.close()
-        conn.close()
 
+        default_fixtureId=Common.FetchDB("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
         fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
         
         query = '''select b.x,b.y,a.node,a.fixture_id,a.BRC from pins_fail_18275 a
@@ -648,11 +599,8 @@ class FailNode(Resource):
         sql=query
         print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -663,11 +611,9 @@ class FailNode(Resource):
                         'BRC': row['BRC']
                     })
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -700,11 +646,8 @@ class FailNode(Resource):
         # sql = query + ''' group by b.x,b.y,a.node,a.fixture_id order by fixture_id'''
         # print(sql)
 
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     # data exist
         #     if len(rows)>0:
         #         for row in rows:
@@ -715,11 +658,9 @@ class FailNode(Resource):
         #                 'BRC': row['BRC']
         #             })
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -733,14 +674,9 @@ class PassNode(Resource):
         # 取得request參數
         fromTime = request.args.get('startTime','')
         endTime = request.args.get('endTime','')
-        
-        conn = mysql2.connect()
-        cursor = conn.cursor()
-        cursor.execute("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
-        default_fixtureId=cursor.fetchall()
-        cursor.close()
-        conn.close()
-        
+        default_fixtureId=Common.FetchDB("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
+
+
         fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
 
         query = '''select node,x,y,pins as BRC from fixture where node NOT in
@@ -767,11 +703,8 @@ class PassNode(Resource):
         sql = query + ''' ) As a ) and board='73-18275-04' group by node,x,y '''
         print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -784,9 +717,7 @@ class PassNode(Resource):
         except Exception as inst:
             logging.getLogger('error_Logger').error('ICT Result Query Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -855,13 +786,9 @@ class AllNode(Resource):
         sql = ''' select x,y,node from fixture  
                     where board='{0}' 
                     group by x,y,node '''.format(board)
-        print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -871,11 +798,9 @@ class AllNode(Resource):
                         'y': row['y']
                     })
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -890,13 +815,9 @@ class FailFixture(Resource):
         # board = request.args.get('board','73-18275-04')
         
         sql = ''' select distinct(fixture_id) from pins_fail_18275 '''
-        print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -904,11 +825,9 @@ class FailFixture(Resource):
                         'fixture_id': row['fixture_id']
                     })
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -924,13 +843,9 @@ class Board(Resource):
         sql = ''' select x,y from board  
                     where board='{0}' 
                     group by x,y'''.format(board)
-        print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -939,11 +854,10 @@ class Board(Resource):
                         'y': row['y']
                     }
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -956,6 +870,7 @@ class PinsFail(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+
         # pins = 0
         # comp = 0
         # prog = 0
@@ -967,12 +882,9 @@ class PinsFail(Resource):
         # UNION
         # select count(DISTINCT seq) as prog from program_fail_18275
         # '''
-        # # connector to mysql
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
+
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     # data exist
         #     if len(rows)>0:
         #         for row in rows:
@@ -985,11 +897,9 @@ class PinsFail(Resource):
         #         'pins_failrate': '{:.2}'.format(pins / total)
         #         }
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('Pins Fail Query Err')
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -1014,12 +924,9 @@ class CompFail(Resource):
         # UNION
         # select count(DISTINCT seq) as prog from program_fail_18275
         # '''
-        # # connector to mysql
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
+
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     # data exist
         #     if len(rows)>0:
         #         for row in rows:
@@ -1035,11 +942,9 @@ class CompFail(Resource):
         #         'component_failrate': '{:.2}'.format(compp / 100)
         #         }
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('Pins Fail Query Err')
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -1051,6 +956,8 @@ class ProgFail(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+
+
         # pins = 0
         # comp = 0
         # prog = 0
@@ -1062,12 +969,9 @@ class ProgFail(Resource):
         # UNION
         # select count(DISTINCT seq) as prog from program_fail_18275
         # '''
-        # # connector to mysql
-        # conn = mysql2.connect()
-        # cursor = conn.cursor()
+
         # try:
-        #     cursor.execute(sql)
-        #     rows = cursor.fetchall()
+        #     rows=Common.FetchDB(sql)
         #     # data exist
         #     if len(rows)>0:
         #         for row in rows:
@@ -1080,11 +984,9 @@ class ProgFail(Resource):
         #         'program_failrate': '{:.2}'.format(prog / total)
         #         }
         # except Exception as inst:
-        #     logging.getLogger('error_Logger').error('Pins Fail Query Err')
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
         #     logging.getLogger('error_Logger').error(inst)
-        # finally:
-        #     cursor.close()
-        #     conn.close()
+        
         # response = jsonify(result)
         # response.status_code=200
         # return result
@@ -1106,12 +1008,9 @@ class BoardFixture(Resource):
         sql = query+ ''' group by board,fixture_id,fail_code '''
         
         print(sql)
-        conn = mysql2.connect()
-        cursor = conn.cursor()
+
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 board=''
@@ -1147,11 +1046,9 @@ class BoardFixture(Resource):
                         
                         
         except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error('ICT Result Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
@@ -1403,104 +1300,6 @@ class CaseDistribution(Resource):
                        'open':open_dict,
                        'analog_function':analog_func_dict,
                        'testjet':testjet_dict})
-
-        response = jsonify(result)
-        response.status_code=200
-        return result
-
-@restapi.resource('/case_open')
-class CaseOpen(Resource):
-    def get(self,headers=None):
-        result=[]
-        opening_result=[]
-        ongoing_result=[]
-        closed_result=[]
-
-        # 取得request參數
-        board = request.args.get('board','')
-        fixtureId = request.args.get('fixtureId','')
-
-        # weekbefore=13
-
-        # 取得從今日起往前13週週數
-        # x_date=Common.WeekNumList(weekbefore*-1)
-
-        # 取得該治具總測版數量
-        query=''' select count(*) as total from ict_detail_result 
-                  where fixture_id='{0}' and board='{1}' and flag=1 '''.format(fixtureId,board)
-        rows=Common.FetchDB(query)  
-        totalboard=rows[0]['total']
-
-        # 取得
-        query=''' select BRC,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
-                  d.solution as solution3,a.solution_memo,a.update_time_op,a.update_op,count(BRC) as failcount
-                  from pins_fail_18275 a
-                  left join fail_solution b on a.solution_1=b.id
-                  left join fail_solution c on a.solution_2=c.id
-                  left join fail_solution d on a.solution_3=d.id
-                  where fixture_id='{0}' and board='{1}' and flag=1 and test_type='open'
-                  group by BRC,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_time_op,update_op,solution_memo
-                  order by BRC '''.format(fixtureId,board)
-
-        rows=Common.FetchDB(query)
-
-        for row in rows:
-            if(row['fail_state']=='0'):
-                opening=[]
-                probe=[]
-                count=[]
-                probe.append(row['BRC'])
-                count.append(row['failcount'])
-                count.append(totalboard)
-                opening.append(probe)
-                opening.append(count)
-                opening_result.append(opening)
-
-            elif(row['fail_state']=='1'):
-                probe=[]
-                count=[]
-                solution=[]
-                probe.append(row['BRC'])
-                count.append(row['failcount'])
-                count.append(totalboard)
-                solution.append(row['update_op'])
-                solution.append(row['solution1'])
-                solution.append(row['solution2'])
-                solution.append(row['solution3'])
-                solution.append(row['solution_memo'])
-                solution.append(row['update_time_op'])
-                opening.append(probe)
-                opening.append(count)
-                opening_result.append(opening)
-
-            elif(row['fail_state']=='2'):
-                probe=[]
-                count=[]
-                probe.append(row['BRC'])
-                count.append(row['failcount'])
-                count.append(totalboard)
-                opening.append(probe)
-                opening.append(count)
-                opening_result.append(opening)
-        print(rows)
-        x=1
-        # for x in range(weekbefore):
-        #     total.append(0)
-        #     retest.append(0)
-        #     x=x+1
-
-        # for row in rows:
-        #     if (row['weeknumber'] in x_date):
-        #         # 找到該週位置後替換total list中的值為sql查詢得到的值
-        #         index=x_date.index(row['weeknumber'])
-        #         total[index]=str(row['total'])
-        #         retest[index]=str(row['retestrate'])
-
-
-        # result.append({'x_date':x_date,
-        #                 'total':total,
-        #                 'retest':retest
-        #             })
 
         response = jsonify(result)
         response.status_code=200

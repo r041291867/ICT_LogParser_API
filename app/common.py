@@ -55,13 +55,18 @@ class Common(Resource):
         return (weeknumlist)
 
     def FetchDB(query):
-        conn = mysql2.connect()
-        cursor = conn.cursor()
-        cursor.execute(query)
-        result=cursor.fetchall()
-        print(result)
-        print(query)
-        return (result)
+        try:
+            conn = mysql2.connect()
+            cursor = conn.cursor()
+            cursor.execute(query)
+            result=cursor.fetchall()
+            return (result)
+        except Exception as inst:
+            logging.getLogger('error_Logger').error('ICT Result Query Err')
+            logging.getLogger('error_Logger').error(inst)
+        finally:
+            cursor.close()
+            conn.close()
 
 
 
