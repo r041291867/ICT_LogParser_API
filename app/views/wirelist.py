@@ -46,7 +46,7 @@ class Wirelist(Resource):
 									subtest=sp[1]
 
 								elif (sp[0]=='wire'):
-									db_sp=(board,test_type,component,subtest,sp[1],sp[3])
+									db_sp=(board,test_type,component,subtest,sp[1],sp[3],sp[4])
 									print(db_sp)
 								
 								elif(sp[0]=='end' and sp[1]=='test'):break
@@ -102,7 +102,7 @@ class Wirelist(Resource):
 										component=(sp[1].split(';'))[0]
 
 									elif (sp[0]=='wire'):
-										db_sp=(board,test_type,component,subtest,sp[1],sp[3])
+										db_sp=(board,test_type,component,subtest,sp[1],sp[3],sp[4])
 										WriteDbResult = self.WriteToDb(db_sp,0)
 									
 									elif(sp[0]=='end' and sp[1]=='test'):break
@@ -122,7 +122,7 @@ class Wirelist(Resource):
 
 	def WriteToDb(self,lists,type):
 		if (type == 0) :
-			Items = 'insert ignore into ICT_Project.wirelist(board,test_type,component,subtest,node,BRC) values ('
+			Items = 'insert ignore into ICT_Project.wirelist(board,test_type,component,subtest,node,BRC,mark) values ('
 		
 		for item in lists:
 			if str(item)=="None":Items=Items+'null'+','

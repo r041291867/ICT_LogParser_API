@@ -112,7 +112,6 @@ class Newlog(Resource):
 		WriteDbResult = False
 		
 		try:
-			path=os.path.abspath("..")+"newlog/"
 			fp = open(path+filename, 'r')
 			line = fp.readline()
 			db_sp=[]
@@ -177,20 +176,20 @@ class Newlog(Resource):
 			print("[error]: {0}".format(err))
 		
 		if WriteDbResult :
-			shutil.move(path+filename,os.path.abspath("..")+"processednewlog/")
+			shutil.move(path+filename,os.path.abspath("..")+"processednewlog_rt/")
 			result['result'] = 'Success'
 		return result
 
 	def CheckRepeat(self,board,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
+		cursor.execute("select count(*) from ICT_Project_Realtime.ict_detail_result where board='"+board+"' and machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
 
 	def WriteToDb(self,lists):
 		
-		Items = 'insert ignore into ICT_Project.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
+		Items = 'insert ignore into ICT_Project_Realtime.ict_detail_result(board,sn,ict_station,cell_no,status,fail_code,start_time,end_time,total_time,operator,machine,machine_ip,machine_mac,fixture_id,program_id,retest,avg_vacuum,min_vacuum,max_vacuum,tester_temp,esd_impedance,esd_voltage,deviation1,deviation2,deviation3,deviation4,deviation5) values ('
 		
 		
 		for item in lists:

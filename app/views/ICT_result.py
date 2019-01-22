@@ -6,6 +6,7 @@ from flask_restful import Resource, Api
 from . import views_blueprint
 from app.extensions import mysql2,restapi,cache
 from app.utils import cache_key
+from app.common import Common
 from flask import request
 import textwrap
 import gzip
@@ -16,6 +17,8 @@ import os
 from datetime import date,datetime as dt, timedelta
 import base64
 import random
+import time
+import copy
 
 
 
@@ -1152,6 +1155,364 @@ class BoardFixture(Resource):
         response = jsonify(result)
         response.status_code=200
         return result
+
+@restapi.resource('/trend')
+class Trend(Resource):
+    def get(self,headers=None):
+        result=[]
+        total=[]
+        retest=[]
+        # 取得request參數
+        board = request.args.get('board','')
+        fixtureId = request.args.get('fixtureId','')
+        weeknum=request.args.get('weeknum',13)
+        weeknum=int(float(weeknum))
+
+        # 取得從今日起往前13週週數
+        x_date=Common.WeekNumList(weeknum)
+
+        # 取得13週測板總數及重測率
+        query=''' select sum(total) as total,sum(retest) as retest, sum(retest)/sum(total)-1 as 'retestrate', weeknumber from
+                  (
+                        select count(sn) as total,sum(a.retest) as retest, a.weeknumber from
+                        (
+                            select week(end_time) as weeknumber,retest+1 as retest,sn
+                            from ICT_Project.ict_detail_result
+                            where fixture_id='{0}' and board='{1}' and flag=1 
+                        ) a group by weeknumber,sn
+                  ) b group by weeknumber order by weeknumber '''.format(fixtureId,board)
+
+        print(query)
+        rows=Common.FetchDB(query)
+
+        x=1
+        for x in range(abs(weeknum)):
+            total.append(0)
+            retest.append(0)
+            x=x+1
+
+        for row in rows:
+            if (row['weeknumber'] in x_date):
+                # 找到該週位置後替換total list中的值為sql查詢得到的值
+                index=x_date.index(row['weeknumber'])
+                total[index]=str(row['total'])
+                retest[index]=str(row['retestrate'])
+
+
+        result.append({'x_date':x_date,
+                        'total':total,
+                        'retest':retest,
+                        'retest_target': 4
+                    })
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
+
+@restapi.resource('/distribution')
+class Distribution(Resource):
+    def get(self,headers=None):
+        result=[]
+        case_distribution=[]
+        case_overview=[0,0,0]
+ 
+        # 取得request參數
+        board = request.args.get('board','')
+        fixtureId = request.args.get('fixtureId','')
+        failtype=request.args.get('failtype','')
+        weeknum=request.args.get('weeknum',13)
+        weeknum=int(float(weeknum))
+
+        failtable=''
+
+        if failtype=='pins':
+            failtable='pins_fail_18275'
+        elif failtype=='program':
+            failtable='program_fail_18275'
+        elif failtype=='component':
+            failtable='component_fail_18275'
+
+
+        # 取得從今日起往前13週週數
+        x_date=Common.WeekNumList(weeknum)
+
+        # 取得13週測板總數及重測率
+        query=''' select *,count(a.fail_state) as fail_number from  
+                  (
+                        select fail_state,week(end_time) as weeknumber from ICT_Project.{0} 
+                        where fixture_id='{1}' and board='{2}' and flag=1
+                  ) a group by weeknumber,fail_state '''.format(failtable,fixtureId,board)
+
+        rows=Common.FetchDB(query)
+        print(rows)
+
+        x=1
+
+        for x in range(abs(weeknum)):
+            case_distribution.append([0,0,0])
+            x=x+1
+
+        print(case_distribution)
+
+        for row in rows:
+            if (row['weeknumber'] in x_date):
+                # 找到該週位置後替換total list中的值為sql查詢得到的值
+                index=x_date.index(row['weeknumber'])
+                if(row['fail_state']==0):
+                    case_distribution[index][0]=row['fail_number']
+                    case_overview[0]=case_overview[0]+row['fail_number']
+                elif(row['fail_state']==1):
+                    case_distribution[index][1]=row['fail_number']
+                    case_overview[1]=case_overview[1]+row['fail_number']
+                elif(row['fail_state']==2):
+                    case_distribution[index][2]=row['fail_number']
+                    case_overview[2]=case_overview[2]+row['fail_number']
+
+
+        result.append({'x_date':x_date,
+                        'case_overview':case_overview,
+                        'case_distribution':case_distribution
+                    })
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
+
+@restapi.resource('/case_distribution')
+class CaseDistribution(Resource):
+    def get(self,headers=None):
+        result=[]
+        # 取得request參數
+        board = request.args.get('board','')
+        fixtureId = request.args.get('fixtureId','')
+        failtype=request.args.get('failtype','')
+        weeknum=request.args.get('weeknum',13)
+        weeknum=int(float(weeknum))
+
+        failtable=''
+
+        if failtype=='pins':
+            failtable='pins_fail_18275'
+        elif failtype=='program':
+            failtable='program_fail_18275'
+        elif failtype=='component':
+            failtable='component_fail_18275'
+
+        after_enddate=Common.BeforeNWeekDate(weeknum)
+
+        testtypelist=['digital_bscan','short','analog','check_pins','pwr_supply','open','analog_function','testjet']
+
+        # 取得13週測板總數及重測率
+        query=''' select *,count(a.test_type) as fail_number from 
+                 ( 
+                    select case when test_type='boundary_scan' then 'digital_bscan'
+                                when test_type='digital' then 'digital_bscan'
+                                when test_type='power_on' then 'pwr_supply'
+                                when test_type='analog_powered' then 'analog_function'
+                                else test_type end as test_type,
+                            fail_state from ICT_Project.{0} 
+                    where fixture_id='{1}' and board='{2}' and flag=1 and end_time>='{3}' 
+                 ) a 
+                 group by test_type,fail_state '''.format(failtable,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+
+
+        rows=Common.FetchDB(query)
+        # 建立每種測試的狀態dict
+        state_dict={'opening':0,'ongoing':0,'closing':0}
+        digital_bscan_dict=copy.deepcopy(state_dict)
+        short_dict=copy.deepcopy(state_dict)
+        analog_dict=copy.deepcopy(state_dict)
+        check_pins_dict=copy.deepcopy(state_dict)
+        pwr_supply_dict=copy.deepcopy(state_dict)
+        open_dict=copy.deepcopy(state_dict)
+        analog_func_dict=copy.deepcopy(state_dict)
+        testjet_dict=copy.deepcopy(state_dict)
+
+        # 從數據庫查詢結果更新dict
+        for row in rows:
+            if(row['test_type'].lower()=='digital_bscan'):
+                if(row['fail_state']==0):
+                    digital_bscan_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    digital_bscan_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    digital_bscan_dict['closed']=row['fail_number']
+
+            elif(row['test_type'].lower()=='short'):
+                if(row['fail_state']==0):
+                    short_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    short_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    short_dict['closed']=row['fail_number']
+
+            elif(row['test_type'].lower()=='analog'):
+                if(row['fail_state']==0):
+                    analog_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    analog_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    analog_dict['closed']=row['fail_number']    
+            
+            elif(row['test_type'].lower()=='check_pins'):
+                if(row['fail_state']==0):
+                    check_pins_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    check_pins_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    check_pins_dict['closed']=row['fail_number']   
+
+            elif(row['test_type'].lower()=='pwr_supply'):
+                if(row['fail_state']==0):
+                    pwr_supply_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    pwr_supply_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    pwr_supply_dict['closed']=row['fail_number']        
+
+            elif(row['test_type'].lower()=='open'):
+                if(row['fail_state']==0):
+                    open_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    open_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    open_dict['closed']=row['fail_number']                                                                
+
+            elif(row['test_type'].lower()=='analog_function'):
+                if(row['fail_state']==0):
+                    analog_func_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    analog_func_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    analog_func_dict['closed']=row['fail_number']               
+
+            elif(row['test_type'].lower()=='testjet'):
+                if(row['fail_state']==0):
+                    testjet_dict['opening']=row['fail_number']
+                elif(row['fail_state']=='1'):
+                    testjet_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']=='2'):
+                    testjet_dict['closed']=row['fail_number']   
+
+        # 將更新後dict加入result並回傳
+        result.append({'digital_bscan':digital_bscan_dict,
+                       'short':short_dict,                    
+                       'analog':analog_dict,
+                       'check_pins':check_pins_dict,                           
+                       'pwr_supply':pwr_supply_dict,
+                       'open':open_dict,
+                       'analog_function':analog_func_dict,
+                       'testjet':testjet_dict})
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
+
+@restapi.resource('/case_open')
+class CaseOpen(Resource):
+    def get(self,headers=None):
+        result=[]
+        opening_result=[]
+        ongoing_result=[]
+        closed_result=[]
+
+        # 取得request參數
+        board = request.args.get('board','')
+        fixtureId = request.args.get('fixtureId','')
+
+        # weekbefore=13
+
+        # 取得從今日起往前13週週數
+        # x_date=Common.WeekNumList(weekbefore*-1)
+
+        # 取得該治具總測版數量
+        query=''' select count(*) as total from ict_detail_result 
+                  where fixture_id='{0}' and board='{1}' and flag=1 '''.format(fixtureId,board)
+        rows=Common.FetchDB(query)  
+        totalboard=rows[0]['total']
+
+        # 取得
+        query=''' select BRC,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
+                  d.solution as solution3,a.solution_memo,a.update_time_op,a.update_op,count(BRC) as failcount
+                  from pins_fail_18275 a
+                  left join fail_solution b on a.solution_1=b.id
+                  left join fail_solution c on a.solution_2=c.id
+                  left join fail_solution d on a.solution_3=d.id
+                  where fixture_id='{0}' and board='{1}' and flag=1 and test_type='open'
+                  group by BRC,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_time_op,update_op,solution_memo
+                  order by BRC '''.format(fixtureId,board)
+
+        rows=Common.FetchDB(query)
+
+        for row in rows:
+            if(row['fail_state']=='0'):
+                opening=[]
+                probe=[]
+                count=[]
+                probe.append(row['BRC'])
+                count.append(row['failcount'])
+                count.append(totalboard)
+                opening.append(probe)
+                opening.append(count)
+                opening_result.append(opening)
+
+            elif(row['fail_state']=='1'):
+                probe=[]
+                count=[]
+                solution=[]
+                probe.append(row['BRC'])
+                count.append(row['failcount'])
+                count.append(totalboard)
+                solution.append(row['update_op'])
+                solution.append(row['solution1'])
+                solution.append(row['solution2'])
+                solution.append(row['solution3'])
+                solution.append(row['solution_memo'])
+                solution.append(row['update_time_op'])
+                opening.append(probe)
+                opening.append(count)
+                opening_result.append(opening)
+
+            elif(row['fail_state']=='2'):
+                probe=[]
+                count=[]
+                probe.append(row['BRC'])
+                count.append(row['failcount'])
+                count.append(totalboard)
+                opening.append(probe)
+                opening.append(count)
+                opening_result.append(opening)
+        print(rows)
+        x=1
+        # for x in range(weekbefore):
+        #     total.append(0)
+        #     retest.append(0)
+        #     x=x+1
+
+        # for row in rows:
+        #     if (row['weeknumber'] in x_date):
+        #         # 找到該週位置後替換total list中的值為sql查詢得到的值
+        #         index=x_date.index(row['weeknumber'])
+        #         total[index]=str(row['total'])
+        #         retest[index]=str(row['retestrate'])
+
+
+        # result.append({'x_date':x_date,
+        #                 'total':total,
+        #                 'retest':retest
+        #             })
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
+
+
+
+
+
+
+
+
 
 
 
