@@ -1079,6 +1079,7 @@ class PinsTrend(Resource):
                             select week(end_time) as weeknumber,retest+1 as retest,sn
                             from ICT_Project.ict_detail_result
                             where fixture_id='{0}' and board='{1}' and flag=1 
+                            group by sn
                         ) a group by weeknumber,sn
                   ) b group by weeknumber order by weeknumber '''.format(fixtureId,board)
 
@@ -1122,18 +1123,8 @@ class PinsDistribution(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
         weeknum=request.args.get('weeknum',20)
         weeknum=int(float(weeknum))
-
-        failtable=''
-
-        if failtype=='pins':
-            failtable='pins_fail_18275'
-        elif failtype=='program':
-            failtable='program_fail_18275'
-        elif failtype=='component':
-            failtable='component_fail_18275'
 
 
         # 取得從今日起往前13週週數
@@ -1170,15 +1161,12 @@ class PinsDistribution(Resource):
                     ) t group by weeknumber,fail_state '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
 
         rows=Common.FetchDB(query)
-        print(query)
 
         x=1
 
         for x in range(abs(weeknum)):
             case_distribution.append([0,0,0])
             x=x+1
-
-        print(case_distribution)
 
         for row in rows:
             if (row['weeknumber'] in x_date):
@@ -1214,18 +1202,9 @@ class PinsCaseDistribution(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
         weeknum=request.args.get('weeknum',20)
         weeknum=int(float(weeknum))
 
-        failtable=''
-
-        if failtype=='pins':
-            failtable='pins_fail_18275'
-        elif failtype=='program':
-            failtable='program_fail_18275'
-        elif failtype=='component':
-            failtable='component_fail_18275'
 
         after_enddate=Common.BeforeNWeekDate(weeknum)
 
@@ -1263,7 +1242,6 @@ class PinsCaseDistribution(Resource):
                     ) a group by fail_state,test_type
                 ) t '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
 
-        print(query)
 
         rows=Common.FetchDB(query)
         # 建立每種測試的狀態dict
@@ -1364,9 +1342,6 @@ class PinsCaseDistribution(Resource):
 @restapi.resource('/pins/case_openshort')
 class PinsCaseOpenShort(Resource):
     def get(self,headers=None):
-        opening_result=[]
-        ongoing_result=[]
-        closed_result=[]
         board_list=[]
         beforefail_dict={}
         beforetotal_dict={}
@@ -1378,24 +1353,16 @@ class PinsCaseOpenShort(Resource):
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
         testtype= request.args.get('testtype','')
-        failtype=request.args.get('failtype','')
-
-        if (failtype=='pins'):
-            failtype='pins_fail_18275'
-        elif (failtype=='program'):
-            failtype='program_fail_18275'
-        elif (failtype=='component'):
-            failtype='component_fail_18275'
 
         try:
             after_enddate=Common.BeforeNWeekDate(20)
             
             # 取得該治具總測板數量
-            board_list=Common.GetTotalBoard(fixtureId,board)
+            board_list=Common.GetTotalBoardByFixture(fixtureId,board)
             totalboard=len(board_list)
             
             # 取得每個BRC最新closed時間
-            rows=Common.GetClosedTime(fixtureId,board,testtype) 
+            rows=Common.GetClosedTimeByFixture(fixtureId,board,testtype) 
             
             for row in rows:
                 beforetotal=0
@@ -1410,158 +1377,34 @@ class PinsCaseOpenShort(Resource):
                 aftertotal_dict[row['BRC']]=aftertotal
             
             # 取得為維護後重測次數(fail_state不為closed)
-            rows=Common.GetAfterFailCount(fixtureId,board,testtype)
+            rows=Common.GetAfterFailCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 afterfail_dict[row['BRC']]=row['failcount']
 
             # 取得為維護前重測次數(fail_state為closed)            
-            rows=Common.GetBeforeFailCount(fixtureId,board,testtype)
+            rows=Common.GetBeforeFailCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 beforefail_dict[row['BRC']]=row['failcount']    
 
             # 取得每次closed後重新open次數
-            rows=Common.GetReopenCount(fixtureId,board,testtype)
+            rows=Common.GetReopenCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 count_dict[row['BRC']]=row['reopencount']   
 
             query=''' select BRC,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
                       d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(BRC) as failcount
-                      from {0} a
+                      from pins_fail_18275 a
                       left join fail_solution b on a.solution_1=b.id 
                       left join fail_solution c on a.solution_2=c.id 
                       left join fail_solution d on a.solution_3=d.id 
-                      where fixture_id='{1}' and board='{2}' and flag=1 and test_type='{3}' and end_time>='{4}'  
+                      where fixture_id='{0}' and board='{1}' and flag=1 and test_type='{2}' and end_time>='{3}'  
                       group by BRC,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
-                      order by BRC '''.format(failtype,fixtureId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+                      order by BRC '''.format(fixtureId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
 
             rows=Common.FetchDB(query)
 
-            for row in rows:
-                
-                if(row['fail_state']==0):
-                    opening=[]
-                    probe=[]
-                    count=[]
-                    probe.append(row['BRC'])
-                    opening.append(probe)
-                    opening.append([row['failcount']])
-                    opening.append([totalboard])
-                    if(row['BRC'] in count_dict):
-                        opening.append([[count_dict[row['BRC']]]+1])
-                    else:
-                        opening.append([1])
-                    opening_result.append(opening)
+            result=Common.GetCaseBRCDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
 
-
-                elif(row['fail_state']==1):
-                    ongoing=[]
-                    probe=[]
-                    count=[]
-                    beforecount=[]
-                    aftercount=[]
-                    solution=[]
-
-                    probe.append(row['BRC'])
-                    count.append(row['failcount'])
-                    count.append(totalboard)
-
-                    if(row['BRC'] in beforefail_dict):
-                        beforecount.append(beforefail_dict[row['BRC']])
-                    else:
-                        beforecount.append(0)
-
-                    if(row['BRC'] in beforetotal_dict):
-                        beforecount.append(beforetotal_dict[row['BRC']])
-                    else:
-                        beforecount.append(totalboard)
-
-                    if(row['BRC'] in afterfail_dict):
-                        aftercount.append(afterfail_dict[row['BRC']])
-                    else:
-                        aftercount.append(0)
-
-                    if(row['BRC'] in aftertotal_dict):
-                        aftercount.append(aftertotal_dict[row['BRC']])
-                    else:
-                        aftercount.append(0)
-
-                    solution.append(row['update_op'])
-                    solution.append(row['solution1'])
-                    solution.append(row['solution2'])
-                    solution.append(row['solution3'])
-                    solution.append(row['solution_memo'])
-                    solution.append(str(row['update_time_op']))
-                    if(row['BRC'] in count_dict):
-                        solution.append(count_dict[row['BRC']])
-                    else:
-                        solution.append(1)
-                    
-                    ongoing.append(probe)
-                    ongoing.append(count)
-                    ongoing.append(beforecount)
-                    ongoing.append(aftercount)
-                    ongoing.append(solution)
-
-                    ongoing_result.append(ongoing)
-
-                elif(row['fail_state']==2):
-                    closed=[]
-                    probe=[]
-                    count=[]
-                    beforecount=[]
-                    aftercount=[]
-                    solution=[]
-
-                    probe.append(row['BRC'])
-                    count.append(row['failcount'])
-                    count.append(totalboard)
-
-                    if(row['BRC'] in beforefail_dict):
-                        beforecount.append(beforefail_dict[row['BRC']])
-                    else:
-                        beforecount.append(0)
-                    
-                    if(row['BRC'] in beforetotal_dict):
-                        beforecount.append(beforetotal_dict[row['BRC']])
-                    else:
-                        beforecount.append(totalboard)
-
-                    if(row['BRC'] in afterfail_dict):
-                        aftercount.append(afterfail_dict[row['BRC']])
-                    else:
-                        aftercount.append(0)
-
-                    if(row['BRC'] in aftertotal_dict):
-                        aftercount.append(aftertotal_dict[row['BRC']])
-                    else:
-                        aftercount.append(0)                        
-
-                    solution.append(row['update_op'])
-                    solution.append(row['solution1'])
-                    solution.append(row['solution2'])
-                    solution.append(row['solution3'])
-                    solution.append(row['solution_memo'])
-                    solution.append(str(row['update_time_op']))
-                    if(row['BRC'] in count_dict):
-                        solution.append(count_dict[row['BRC']])
-                    else:
-                        solution.append(1)
-
-                    closed.append(probe)
-                    closed.append(count)
-                    closed.append(beforecount)
-                    closed.append(aftercount)
-                    closed.append(solution)
-
-                    closed_result.append(closed)
-
-            result=({'payload':
-                        {
-                            'opening':opening_result,
-                            'ongoing':ongoing_result,
-                            'closed':closed_result
-                        }
-                    })
 
             response = jsonify(result)
             response.status_code=200
@@ -1582,29 +1425,18 @@ class PinsCaseTestjet(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
-
-        if (failtype=='pins'):
-            failtype='pins_fail_18275'
-        elif (failtype=='program'):
-            failtype='program_fail_18275'
-        elif (failtype=='component'):
-            failtype='component_fail_18275'
 
         try:
             after_enddate=Common.BeforeNWeekDate(20)
 
             # 取得該治具總測板數量
-            query=''' select sn,max(end_time) as end_time from ict_detail_result  
-                      where fixture_id='{0}' and board='{1}' group by sn '''.format(fixtureId,board)
-            rows=Common.FetchDB(query)  
-            board_list=rows
+            board_list=Common.GetTotalBoardByProgram(fixtureId,board)
             totalboard=len(board_list)
             
             # 取得每個component/pins最新closed時間
-            query=''' select concat(component,'/',pins) as component,max(update_time_op) as update_time from {0}
-                      where fixture_id='{1}' and board='{2}' and flag=1 and end_time>='{3}'  
-                      and fail_state=2 and test_type='testjet' group by component,pins '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+            query=''' select concat(component,'/',pins) as component,max(update_time_op) as update_time from pins_fail_18275
+                      where fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
+                      and fail_state=2 and test_type='testjet' group by component,pins '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)  
             
             for row in rows:
@@ -1623,11 +1455,11 @@ class PinsCaseTestjet(Resource):
             # 取得為維護後重測次數(fail_state不為closed)
             query=''' select count(component) as failcount,component from
                       (
-                        select concat(component,'/',pins) as component from {0}
-                        where  fixture_id='{1}' and board='{2}' and flag=1 and end_time>='{3}'  
+                        select concat(component,'/',pins) as component from pins_fail_18275
+                        where  fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
                         and fail_state between 0 and 1  and test_type='testjet'
                       ) a
-                      group by component '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+                      group by component '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)
             for row in rows:
                 afterfail_dict[row['component']]=row['failcount']
@@ -1635,11 +1467,11 @@ class PinsCaseTestjet(Resource):
             # 取得維護前重測次數(fail_state為closed)
             query=''' select count(component) as failcount,component from
                       (
-                        select concat(component,'/',pins) as component from {0}
-                        where  fixture_id='{0}' and board='{1}'  and flag=1 and end_time>='{3}'  
+                        select concat(component,'/',pins) as component from pins_fail_18275
+                        where  fixture_id='{0}' and board='{1}'  and flag=1 and end_time>='{2}'  
                         and fail_state = 2  and test_type='testjet'
                        ) a
-                      group by component '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+                      group by component '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)
             for row in rows:
                 beforefail_dict[row['component']]=row['failcount']    
@@ -1647,24 +1479,24 @@ class PinsCaseTestjet(Resource):
             # 取得每次closed後重新open次數
             query=''' select count(component) as reopencount,component from
                      (
-                        select concat(component,'/',pins) as component,update_time_op from {0}
-                        where fixture_id='{1}' and board='{2}' and flag=1 and end_time>='{3}'  
+                        select concat(component,'/',pins) as component,update_time_op from pins_fail_18275
+                        where fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
                         and test_type='testjet' and fail_state=2  
                         group by component,pins,update_time_op
-                     ) a group by component,update_time_op '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))    
+                     ) a group by component,update_time_op '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))    
             rows=Common.FetchDB(query)
             for row in rows:
                 count_dict[row['component']]=row['reopencount']   
 
             query=''' select concat(component,'/',pins) as component,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
                       d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
-                      from {0} a
+                      from pins_fail_18275 a
                       left join fail_solution b on a.solution_1=b.id
                       left join fail_solution c on a.solution_2=c.id
                       left join fail_solution d on a.solution_3=d.id
-                      where fixture_id='{1}' and board='{2}' and flag=1 and end_time>='{3}'  and test_type='testjet'
+                      where fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  and test_type='testjet'
                       group by component,pins,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
-                      order by component,pins  '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+                      order by component,pins  '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             
             rows=Common.FetchDB(query)
 
@@ -1690,23 +1522,15 @@ class PinsCaseDigital(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
-
-        if (failtype=='pins'):
-            failtype='pins_fail_18275'
-        elif (failtype=='program'):
-            failtype='program_fail_18275'
-        elif (failtype=='component'):
-            failtype='component_fail_18275'
 
         try:
             after_enddate=Common.BeforeNWeekDate(20)
             # 取得該治具總測板數量
-            board_list=Common.GetTotalBoard(fixtureId,board)
+            board_list=Common.GetTotalBoardByFixture(fixtureId,board)
             totalboard=len(board_list)
             
             # 取得每個component最新closed時間
-            rows=Common.GetClosedTime(fixtureId,board,testtype)
+            rows=Common.GetClosedTimeByFixture(fixtureId,board,testtype)
             
             for row in rows:
                 beforetotal=0
@@ -1721,33 +1545,33 @@ class PinsCaseDigital(Resource):
                 aftertotal_dict[row['component']]=aftertotal
 
             # 取得為維護後重測次數(fail_state不為closed)
-            rows=Common.GetAfterFailCount(fixtureId,board,testtype)            
+            rows=Common.GetAfterFailCountByFixture(fixtureId,board,testtype)            
             for row in rows:
                 afterfail_dict[row['component']]=row['failcount']
             
             # 取得維護前重測次數(fail_state為closed)
-            rows=Common.GetBeforeFailCount(fixtureId,board,testtype)
+            rows=Common.GetBeforeFailCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 beforefail_dict[row['component']]=row['failcount']    
 
             # 取得每次closed後重新open次數
-            rows=Common.GetReopenCount(fixtureId,board,testtype)
+            rows=Common.GetReopenCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 count_dict[row['component']]=row['reopencount']   
 
             # 取得明細顯示資料 
             query=''' select component,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
                       d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
-                      from {0} a
+                      from pins_fail_18275 a
                       left join fail_solution b on a.solution_1=b.id
                       left join fail_solution c on a.solution_2=c.id
                       left join fail_solution d on a.solution_3=d.id
-                      where fixture_id='{1}' and board='{2}' and flag=1  and end_time>='{3}'  and test_type in ('digital','boundary_scan')
+                      where fixture_id='{0}' and board='{1}' and flag=1  and end_time>='{2}'  and test_type in ('digital','boundary_scan')
                       group by component,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
-                      order by component  '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))           
+                      order by component  '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))           
             rows=Common.FetchDB(query)
 
-            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,'digital')
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
 
             response = jsonify(result)
             response.status_code=200
@@ -1769,24 +1593,16 @@ class PinsCaseAnalogFunction(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
-
-        if (failtype=='pins'):
-            failtype='pins_fail_18275'
-        elif (failtype=='program'):
-            failtype='program_fail_18275'
-        elif (failtype=='component'):
-            failtype='component_fail_18275'
 
         try:
             after_enddate=Common.BeforeNWeekDate(20)
 
             # 取得該治具總測板數量
-            board_list=Common.GetTotalBoard(fixtureId,board)
+            board_list=Common.GetTotalBoardByFixture(fixtureId,board)
             totalboard=len(board_list)
 
             # 取得每個component最新closed時間
-            rows=Common.GetClosedTime(fixtureId,board,testtype)  
+            rows=Common.GetClosedTimeByFixture(fixtureId,board,testtype)  
 
             for row in rows:
                 beforetotal=0
@@ -1801,33 +1617,33 @@ class PinsCaseAnalogFunction(Resource):
                 aftertotal_dict[row['component']]=aftertotal
 
             # 取得為維護後重測次數(fail_state不為closed)
-            rows=Common.GetAfterFailCount(fixtureId,board,testtype)            
+            rows=Common.GetAfterFailCountByFixture(fixtureId,board,testtype)            
             for row in rows:
                 afterfail_dict[row['component']]=row['failcount']
             
             # 取得維護前重測次數(fail_state為closed)
-            rows=Common.GetBeforeFailCount(fixtureId,board,testtype)
+            rows=Common.GetBeforeFailCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 beforefail_dict[row['component']]=row['failcount']    
 
             # 取得每次closed後重新open次數
-            rows=Common.GetReopenCount(fixtureId,board,testtype)
+            rows=Common.GetReopenCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 count_dict[row['component']]=row['reopencount']  
 
             query=''' select component,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
                       d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
-                      from {0} a
+                      from pins_fail_18275 a
                       left join fail_solution b on a.solution_1=b.id
                       left join fail_solution c on a.solution_2=c.id
                       left join fail_solution d on a.solution_3=d.id
-                      where fixture_id='{1}' and board='{2}'  and flag=1  and end_time>='{3}' and test_type in ('analog_powered','power_on')
+                      where fixture_id='{0}' and board='{1}'  and flag=1  and end_time>='{2}' and test_type in ('analog_powered','power_on')
                       group by component,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
-                      order by component  '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+                      order by component  '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             
             rows=Common.FetchDB(query)
 
-            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,'analog_function')
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
 
             response = jsonify(result)
             response.status_code=200
@@ -1849,23 +1665,15 @@ class PinsCaseAnalog(Resource):
         # 取得request參數
         board = request.args.get('board','')
         fixtureId = request.args.get('fixtureId','')
-        failtype=request.args.get('failtype','')
-
-        if (failtype=='pins'):
-            failtype='pins_fail_18275'
-        elif (failtype=='program'):
-            failtype='program_fail_18275'
-        elif (failtype=='component'):
-            failtype='component_fail_18275'
 
         try:
             after_enddate=Common.BeforeNWeekDate(20)            
             # 取得該治具總測板數量
-            board_list=Common.GetTotalBoard(fixtureId,board)
+            board_list=Common.GetTotalBoardByFixture(fixtureId,board)
             totalboard=len(board_list)
 
             # 取得每個component最新closed時間
-            rows=Common.GetClosedTime(fixtureId,board,testtype)
+            rows=Common.GetClosedTimeByFixture(fixtureId,board,testtype)
 
             for row in rows:
                 beforetotal=0
@@ -1880,32 +1688,32 @@ class PinsCaseAnalog(Resource):
                 aftertotal_dict[row['component']]=aftertotal
 
             # 取得為維護後重測次數(fail_state不為closed)
-            rows=Common.GetAfterFailCount(fixtureId,board,testtype)            
+            rows=Common.GetAfterFailCountByFixture(fixtureId,board,testtype)            
             for row in rows:
                 afterfail_dict[row['component']]=row['failcount']
             
             # 取得維護前重測次數(fail_state為closed)
-            rows=Common.GetBeforeFailCount(fixtureId,board,testtype)
+            rows=Common.GetBeforeFailCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 beforefail_dict[row['component']]=row['failcount']    
 
             # 取得每次closed後重新open次數
-            rows=Common.GetReopenCount(fixtureId,board,testtype)
+            rows=Common.GetReopenCountByFixture(fixtureId,board,testtype)
             for row in rows:
                 count_dict[row['component']]=row['reopencount']  
 
             query=''' select component,high_limit,low_limit,nominal,test_type,fail_state,fixture_id,b.solution as solution1,c.solution as solution2,
                       d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
-                      from {0} a
+                      from pins_fail_18275 a
                       left join fail_solution b on a.solution_1=b.id
                       left join fail_solution c on a.solution_2=c.id
                       left join fail_solution d on a.solution_3=d.id
-                      where fixture_id='{1}' and board='{2}'  and flag=1  and end_time>='{3}' and test_type='analog'
+                      where fixture_id='{0}' and board='{1}'  and flag=1  and end_time>='{2}' and test_type='analog'
                       group by component,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
-                      order by component  '''.format(failtype,fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+                      order by component  '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)
 
-            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,'analog')
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
 
             response = jsonify(result)
             response.status_code=200
@@ -1913,12 +1721,530 @@ class PinsCaseAnalog(Resource):
         except Exception as err:
             print("[error]: {0}".format(err))
 
+@restapi.resource('/prog/case_distribution')
+class ProgCaseDistribution(Resource):
+    def get(self,headers=None):
+
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+        weeknum=request.args.get('weeknum',20)
+        weeknum=int(float(weeknum))
+
+        failtable=''
+
+        after_enddate=Common.BeforeNWeekDate(weeknum)
+
+        testtypelist=['digital_bscan','short','analog','check_pins','pwr_supply','open','analog_function','testjet']
+
+        # 取得n週測板總數及重測率
+        query=''' select case when test_type='boundary_scan' then 'digital_bscan'
+                when test_type='digital' then 'digital_bscan'
+                when test_type='power_on' then 'pwr_supply'
+                when test_type='analog_powered' then 'analog_function'
+                else test_type end as test_type,fail_state,fail_number from
+                (
+                    select count(a.component) as fail_number,test_type,fail_state from  
+                    (
+                        select component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        where program_id='{0}' and board='{1}' and end_time>='{2}'  
+                        and flag=1 and test_type in ('digital','boundary_scan','analog_powered','power_on','analog')
+                        group by component,fail_state
+                    ) a group by fail_state,test_type
+                    union
+                    select count(a.component) as fail_number,test_type,fail_state from  
+                    (
+                        select concat(component,'/',pins) as component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        where program_id='{0}' and board='{1}' and end_time>='{2}'  
+                        and flag=1 and test_type = 'testjet'
+                        group by component,pins,fail_state
+                    ) a group by fail_state,test_type
+                    union
+                    select count(a.component) as fail_number,test_type,fail_state from  
+                    (
+                        select BRC as component,fail_state,test_type,update_time_op from ICT_Project.pins_fail_18275
+                        where program_id='{0}' and board='{1}' and end_time>='{2}'  
+                        and flag=1 and test_type in ('open','short')
+                        group by BRC,fail_state
+                    ) a group by fail_state,test_type
+                ) t '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+
+        rows=Common.FetchDB(query)
+        # 建立每種測試的狀態dict
+        state_dict={'opening':0,'ongoing':0,'closed':0}
+        digital_bscan_dict=copy.deepcopy(state_dict)
+        short_dict=copy.deepcopy(state_dict)
+        analog_dict=copy.deepcopy(state_dict)
+        check_pins_dict=copy.deepcopy(state_dict)
+        pwr_supply_dict=copy.deepcopy(state_dict)
+        open_dict=copy.deepcopy(state_dict)
+        analog_func_dict=copy.deepcopy(state_dict)
+        testjet_dict=copy.deepcopy(state_dict)
+
+        # 從數據庫查詢結果更新dict
+        for row in rows:
+            if(row['test_type'].lower()=='digital_bscan'):
+                if(row['fail_state']==0):
+                    digital_bscan_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    digital_bscan_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    digital_bscan_dict['closed']=row['fail_number']
+
+            elif(row['test_type'].lower()=='short'):
+                if(row['fail_state']==0):
+                    short_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    short_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    short_dict['closed']=row['fail_number']
+
+            elif(row['test_type'].lower()=='analog'):
+                if(row['fail_state']==0):
+                    analog_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    analog_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    analog_dict['closed']=row['fail_number']    
+            
+            elif(row['test_type'].lower()=='check_pins'):
+                if(row['fail_state']==0):
+                    check_pins_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    check_pins_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    check_pins_dict['closed']=row['fail_number']   
+
+            elif(row['test_type'].lower()=='pwr_supply'):
+                if(row['fail_state']==0):
+                    pwr_supply_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    pwr_supply_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    pwr_supply_dict['closed']=row['fail_number']        
+
+            elif(row['test_type'].lower()=='open'):
+                if(row['fail_state']==0):
+                    open_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    open_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    open_dict['closed']=row['fail_number']                                                                
+
+            elif(row['test_type'].lower()=='analog_function'):
+                if(row['fail_state']==0):
+                    analog_func_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    analog_func_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    analog_func_dict['closed']=row['fail_number']               
+
+            elif(row['test_type'].lower()=='testjet'):
+                if(row['fail_state']==0):
+                    testjet_dict['opening']=row['fail_number']
+                elif(row['fail_state']==1):
+                    testjet_dict['ongoing']=row['fail_number']
+                elif(row['fail_state']==2):
+                    testjet_dict['closed']=row['fail_number']   
+
+        # 將更新後dict加入result並回傳
+        result=({'payload':
+                    {
+                        'digital_bscan':digital_bscan_dict,
+                        'short':short_dict,                    
+                        'analog':analog_dict,
+                        'check_pins':check_pins_dict,                           
+                        'pwr_supply':pwr_supply_dict,
+                        'open':open_dict,
+                        'analog_function':analog_func_dict,
+                        'testjet':testjet_dict
+                    }
+                })
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
+
+@restapi.resource('/prog/case_openshort')
+class ProgCaseOpenShort(Resource):
+    def get(self,headers=None):
+        board_list=[]
+        beforefail_dict={}
+        beforetotal_dict={}
+        afterfail_dict={}
+        aftertotal_dict={}
+        count_dict={}
+
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+        testtype= request.args.get('testtype','')
+
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            
+            # 取得該治具總測板數量
+            board_list=Common.GetTotalBoardByProgram(programId,board)
+            totalboard=len(board_list)
+            
+            # 取得每個BRC最新closed時間
+            rows=Common.GetClosedTimeByProgram(programId,board,testtype) 
+            
+            for row in rows:
+                beforetotal=0
+                aftertotal=0
+                for item in board_list:
+                    if(item['end_time']>=row['update_time']):
+                        aftertotal=aftertotal+1
+                    else:
+                        beforetotal=beforetotal+1
+
+                beforetotal_dict[row['BRC']]=beforetotal
+                aftertotal_dict[row['BRC']]=aftertotal
+            
+            # 取得為維護後重測次數(fail_state不為closed)
+            rows=Common.GetAfterFailCountByProgram(programId,board,testtype)
+            for row in rows:
+                afterfail_dict[row['BRC']]=row['failcount']
+
+            # 取得為維護前重測次數(fail_state為closed)            
+            rows=Common.GetBeforeFailCountByProgram(programId,board,testtype)
+            for row in rows:
+                beforefail_dict[row['BRC']]=row['failcount']    
+
+            # 取得每次closed後重新open次數
+            rows=Common.GetReopenCountByProgram(programId,board,testtype)
+            for row in rows:
+                count_dict[row['BRC']]=row['reopencount']   
+
+            query=''' select BRC,test_type,fail_state,program_id,b.solution as solution1,c.solution as solution2,
+                      d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(BRC) as failcount
+                      from program_fail_18275 a
+                      left join fail_solution b on a.solution_1=b.id 
+                      left join fail_solution c on a.solution_2=c.id 
+                      left join fail_solution d on a.solution_3=d.id 
+                      where program_id='{0}' and board='{1}' and flag=1 and test_type='{2}' and end_time>='{3}'  
+                      group by BRC,test_type,fail_state,program_id,solution1,solution2,solution3,update_op,solution_memo
+                      order by BRC '''.format(programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+
+            rows=Common.FetchDB(query)
+
+            result=Common.GetCaseBRCDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
 
 
+            response = jsonify(result)
+            response.status_code=200
+            return result
+        except Exception as err:
+            print("[error]: {0}".format(err))
 
+@restapi.resource('/prog/case_testjet')
+class ProgCaseTestjet(Resource):
+    def get(self,headers=None):
+        board_list=[]
+        beforefail_dict={}
+        beforetotal_dict={}
+        afterfail_dict={}
+        aftertotal_dict={}
+        count_dict={}
 
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
 
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            
+            # 取得該治具總測板數量
+            board_list=Common.GetTotalBoardByProgram(programId,board)
+            totalboard=len(board_list)
+            
+            # 取得每個component/pins最新closed時間
+            query=''' select concat(component,'/',pins) as component,max(update_time_op) as update_time from program_fail_18275
+                      where program_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
+                      and fail_state=2 and test_type='testjet' group by component,pins '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            rows=Common.FetchDB(query)  
 
+            print(query) 
+            
+            for row in rows:
+                beforetotal=0
+                aftertotal=0
+                for item in board_list:
+                    if(item['end_time']>=row['update_time']):
+                        aftertotal=aftertotal+1
+                    else:
+                        beforetotal=beforetotal+1
 
+                beforetotal_dict[row['component']]=beforetotal
+                aftertotal_dict[row['component']]=aftertotal
 
+            # 取得為維護後重測次數(fail_state不為closed)
+            query=''' select count(component) as failcount,component from
+                      (
+                        select concat(component,'/',pins) as component from program_fail_18275
+                        where  program_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
+                        and fail_state between 0 and 1  and test_type='testjet'
+                      ) a
+                      group by component '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            rows=Common.FetchDB(query)
+            for row in rows:
+                afterfail_dict[row['component']]=row['failcount']
+            
+            # 取得維護前重測次數(fail_state為closed)
+            query=''' select count(component) as failcount,component from
+                      (
+                        select concat(component,'/',pins) as component from program_fail_18275
+                        where  program_id='{0}' and board='{1}'  and flag=1 and end_time>='{2}'  
+                        and fail_state = 2  and test_type='testjet'
+                       ) a
+                      group by component '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            rows=Common.FetchDB(query)
+            for row in rows:
+                beforefail_dict[row['component']]=row['failcount']    
 
+            # 取得每次closed後重新open次數
+            query=''' select count(component) as reopencount,component from
+                     (
+                        select concat(component,'/',pins) as component,update_time_op from program_fail_18275
+                        where program_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
+                        and test_type='testjet' and fail_state=2  
+                        group by component,pins,update_time_op
+                     ) a group by component,update_time_op '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))    
+            rows=Common.FetchDB(query)
+            for row in rows:
+                count_dict[row['component']]=row['reopencount']   
+
+            query=''' select concat(component,'/',pins) as component,test_type,fail_state,program_id,b.solution as solution1,c.solution as solution2,
+                      d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
+                      from program_fail_18275 a
+                      left join fail_solution b on a.solution_1=b.id
+                      left join fail_solution c on a.solution_2=c.id
+                      left join fail_solution d on a.solution_3=d.id
+                      where program_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  and test_type='testjet'
+                      group by component,pins,test_type,fail_state,program_id,solution1,solution2,solution3,update_op,solution_memo
+                      order by component,pins  '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            
+            rows=Common.FetchDB(query)
+
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,'testjet')
+
+            response = jsonify(result)
+            response.status_code=200
+            return result
+        except Exception as err:
+            print("[error]: {0}".format(err))
+
+@restapi.resource('/prog/case_digital')
+class ProgCaseDigital(Resource):
+    def get(self,headers=None):
+        board_list=[]
+        beforefail_dict={}
+        beforetotal_dict={}
+        afterfail_dict={}
+        aftertotal_dict={}
+        count_dict={}
+        testtype='digital'
+
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            # 取得該治具總測板數量
+            board_list=Common.GetTotalBoardByProgram(programId,board)
+            totalboard=len(board_list)
+            
+            # 取得每個component最新closed時間
+            rows=Common.GetClosedTimeByProgram(programId,board,testtype)
+            
+            for row in rows:
+                beforetotal=0
+                aftertotal=0
+                for item in board_list:
+                    if(item['end_time']>=row['update_time']):
+                        aftertotal=aftertotal+1
+                    else:
+                        beforetotal=beforetotal+1
+
+                beforetotal_dict[row['component']]=beforetotal
+                aftertotal_dict[row['component']]=aftertotal
+
+            # 取得為維護後重測次數(fail_state不為closed)
+            rows=Common.GetAfterFailCountByProgram(programId,board,testtype)            
+            for row in rows:
+                afterfail_dict[row['component']]=row['failcount']
+            
+            # 取得維護前重測次數(fail_state為closed)
+            rows=Common.GetBeforeFailCountByProgram(programId,board,testtype)
+            for row in rows:
+                beforefail_dict[row['component']]=row['failcount']    
+
+            # 取得每次closed後重新open次數
+            rows=Common.GetReopenCountByProgram(programId,board,testtype)
+            for row in rows:
+                count_dict[row['component']]=row['reopencount']   
+
+            # 取得明細顯示資料 
+            query=''' select component,test_type,fail_state,program_id,b.solution as solution1,c.solution as solution2,
+                      d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
+                      from program_fail_18275 a
+                      left join fail_solution b on a.solution_1=b.id
+                      left join fail_solution c on a.solution_2=c.id
+                      left join fail_solution d on a.solution_3=d.id
+                      where program_id='{0}' and board='{1}' and flag=1  and end_time>='{2}'  and test_type in ('digital','boundary_scan')
+                      group by component,test_type,fail_state,program_id,solution1,solution2,solution3,update_op,solution_memo
+                      order by component  '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))           
+            rows=Common.FetchDB(query)
+            print(query)
+
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
+
+            response = jsonify(result)
+            response.status_code=200
+            return result
+        except Exception as err:
+            print("[error]: {0}".format(err))
+
+@restapi.resource('/prog/case_analog_function')
+class ProgCaseAnalogFunction(Resource):
+    def get(self,headers=None):
+        board_list=[]
+        beforefail_dict={}
+        beforetotal_dict={}
+        afterfail_dict={}
+        aftertotal_dict={}
+        count_dict={}
+        testtype='analog_function'
+
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+
+            # 取得該治具總測板數量
+            board_list=Common.GetTotalBoardByProgram(programId,board)
+            totalboard=len(board_list)
+
+            # 取得每個component最新closed時間
+            rows=Common.GetClosedTimeByProgram(programId,board,testtype)  
+
+            for row in rows:
+                beforetotal=0
+                aftertotal=0
+                for item in board_list:
+                    if(item['end_time']>=row['update_time']):
+                        aftertotal=aftertotal+1
+                    else:
+                        beforetotal=beforetotal+1
+
+                beforetotal_dict[row['component']]=beforetotal
+                aftertotal_dict[row['component']]=aftertotal
+
+            # 取得為維護後重測次數(fail_state不為closed)
+            rows=Common.GetAfterFailCountByProgram(programId,board,testtype)            
+            for row in rows:
+                afterfail_dict[row['component']]=row['failcount']
+            
+            # 取得維護前重測次數(fail_state為closed)
+            rows=Common.GetBeforeFailCountByProgram(programId,board,testtype)
+            for row in rows:
+                beforefail_dict[row['component']]=row['failcount']    
+
+            # 取得每次closed後重新open次數
+            rows=Common.GetReopenCountByProgram(programId,board,testtype)
+            for row in rows:
+                count_dict[row['component']]=row['reopencount']  
+
+            query=''' select component,test_type,fail_state,program_id,b.solution as solution1,c.solution as solution2,
+                      d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
+                      from program_fail_18275 a
+                      left join fail_solution b on a.solution_1=b.id
+                      left join fail_solution c on a.solution_2=c.id
+                      left join fail_solution d on a.solution_3=d.id
+                      where program_id='{0}' and board='{1}'  and flag=1  and end_time>='{2}' and test_type in ('analog_powered','power_on')
+                      group by component,test_type,fail_state,program_id,solution1,solution2,solution3,update_op,solution_memo
+                      order by component  '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            
+            rows=Common.FetchDB(query)
+
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
+
+            response = jsonify(result)
+            response.status_code=200
+            return result
+        except Exception as err:
+            print("[error]: {0}".format(err))
+
+@restapi.resource('/prog/case_analog')
+class ProgCaseAnalog(Resource):
+    def get(self,headers=None):
+        board_list=[]
+        beforefail_dict={}
+        beforetotal_dict={}
+        afterfail_dict={}
+        aftertotal_dict={}
+        count_dict={}
+        testtype='analog'
+
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)            
+            # 取得該治具總測板數量
+            board_list=Common.GetTotalBoardByProgram(programId,board)
+            totalboard=len(board_list)
+
+            # 取得每個component最新closed時間
+            rows=Common.GetClosedTimeByProgram(programId,board,testtype)
+
+            for row in rows:
+                beforetotal=0
+                aftertotal=0
+                for item in board_list:
+                    if(item['end_time']>=row['update_time']):
+                        aftertotal=aftertotal+1
+                    else:
+                        beforetotal=beforetotal+1
+
+                beforetotal_dict[row['component']]=beforetotal
+                aftertotal_dict[row['component']]=aftertotal
+
+            # 取得為維護後重測次數(fail_state不為closed)
+            rows=Common.GetAfterFailCountByProgram(programId,board,testtype)            
+            for row in rows:
+                afterfail_dict[row['component']]=row['failcount']
+            
+            # 取得維護前重測次數(fail_state為closed)
+            rows=Common.GetBeforeFailCountByProgram(programId,board,testtype)
+            for row in rows:
+                beforefail_dict[row['component']]=row['failcount']    
+
+            # 取得每次closed後重新open次數
+            rows=Common.GetReopenCountByProgram(programId,board,testtype)
+            for row in rows:
+                count_dict[row['component']]=row['reopencount']  
+
+            query=''' select component,high_limit,low_limit,nominal,test_type,fail_state,program_id,b.solution as solution1,c.solution as solution2,
+                      d.solution as solution3,a.solution_memo,max(a.update_time_op) as update_time_op,a.update_op,count(component) as failcount
+                      from program_fail_18275 a
+                      left join fail_solution b on a.solution_1=b.id
+                      left join fail_solution c on a.solution_2=c.id
+                      left join fail_solution d on a.solution_3=d.id
+                      where program_id='{0}' and board='{1}'  and flag=1  and end_time>='{2}' and test_type='analog'
+                      group by component,test_type,fail_state,program_id,solution1,solution2,solution3,update_op,solution_memo
+                      order by component  '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+            rows=Common.FetchDB(query)
+
+            result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype)
+
+            response = jsonify(result)
+            response.status_code=200
+            return result
+        except Exception as err:
+            print("[error]: {0}".format(err))            

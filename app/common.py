@@ -55,7 +55,7 @@ class Common(Resource):
         return (weeknumlist)
     
     # 取得治具總測板數量
-    def GetTotalBoard(fixtureId,board):
+    def GetTotalBoardByFixture(fixtureId,board):
         after_enddate=Common.BeforeNWeekDate(20)
 
         query=''' select sn,max(end_time) as end_time from ict_detail_result 
@@ -64,9 +64,20 @@ class Common(Resource):
 
         rows=Common.FetchDB(query)  
         return(rows)
+
+    # 取得程式總測板數量
+    def GetTotalBoardByProgram(programId,board):
+        after_enddate=Common.BeforeNWeekDate(20)
+
+        query=''' select sn,max(end_time) as end_time from ict_detail_result 
+                  where program_id='{0}' and board='{1}' 
+                  and flag=1  and end_time>='{2}' group by sn '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
+
+        rows=Common.FetchDB(query)  
+        return(rows)
     
-    # 取得為維護後重測次數(fail_state不為closed)
-    def GetAfterFailCount(fixtureId,board,testtype):
+    # 取得治具維護後重測次數(fail_state不為closed)
+    def GetAfterFailCountByFixture(fixtureId,board,testtype):
         try:
             after_enddate=Common.BeforeNWeekDate(20)
             element='component'
@@ -107,8 +118,50 @@ class Common(Resource):
         except Exception as inst:
             print(inst)        
 
-    # 取得為維護前重測次數(fail_state為closed)
-    def GetBeforeFailCount(fixtureId,board,testtype):
+    # 取得程式維護後重測次數(fail_state不為closed)
+    def GetAfterFailCountByProgram(programId,board,testtype):
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            element='component'
+
+            if(testtype=='analog'):
+                testtype=''' ='analog' '''
+
+            elif(testtype=='analog_function'):
+                testtype=''' in ('analog_powered','power_on') '''       
+            
+            elif(testtype=='digital'):
+                testtype=''' in ('digital','boundary_scan') '''  
+
+            elif(testtype=='open'):
+                testtype=''' ='open' '''
+                element='BRC'
+
+            elif(testtype=='short'):
+                testtype=''' ='short' '''
+                element='BRC'        
+
+            query=''' select count({0}) as failcount,{0} from
+                      (
+                        select a.{0},update_time_op,maxupdatetime from program_fail_18275  a
+                        inner join 
+                        (
+                            select {0},max(update_time_op) as maxupdatetime from program_fail_18275 where fail_state=2 group by {0}
+                        )b on a.{0}=b.{0} 
+                        where  program_id='{1}' and board='{2}' and fail_state between 0 and 1  and flag=1
+                        and test_type {3} and (a.update_time_op>b.maxupdatetime) and end_time>='{4}'
+                      ) a
+                      group by {0} '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+
+
+            rows=Common.FetchDB(query)       
+            return(rows) 
+
+        except Exception as inst:
+            print(inst)   
+
+    # 取得治具維護前重測次數(fail_state為closed)
+    def GetBeforeFailCountByFixture(fixtureId,board,testtype):
         try:
             after_enddate=Common.BeforeNWeekDate(20)
             element='component'
@@ -139,10 +192,44 @@ class Common(Resource):
             rows=Common.FetchDB(query)       
             return(rows) 
         except Exception as inst:
-            print(inst)                
+            print(inst)   
 
-    # 取得為維護前重測次數(fail_state為closed)
-    def GetClosedTime(fixtureId,board,testtype):
+    # 取得程式維護前重測次數(fail_state為closed)
+    def GetBeforeFailCountByProgram(programId,board,testtype):
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            element='component'
+
+            if(testtype=='analog'):
+                testtype=''' ='analog' '''
+
+            elif(testtype=='analog_function'):
+                testtype=''' in ('analog_powered','power_on') '''       
+            
+            elif(testtype=='digital'):
+                testtype=''' in ('digital','boundary_scan') '''  
+
+            elif(testtype=='open'):
+                testtype=''' ='open' '''
+                element='BRC'
+
+            elif(testtype=='short'):
+                testtype=''' ='short' '''
+                element='BRC'        
+
+            query=''' select count({0}) as failcount,{0} from  program_fail_18275
+                      where  program_id='{1}' and board='{2}' 
+                      and fail_state = 2 and flag=1 and test_type {3} and end_time>='{4}' 
+                      group by {0} '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+
+
+            rows=Common.FetchDB(query)       
+            return(rows) 
+        except Exception as inst:
+            print(inst)                           
+
+    # 取得治具維護前重測次數(fail_state為closed)
+    def GetClosedTimeByFixture(fixtureId,board,testtype):
         try:
             after_enddate=Common.BeforeNWeekDate(20)
             element='component'
@@ -175,8 +262,42 @@ class Common(Resource):
         except Exception as inst:
             print(inst)           
 
-    # 取得為維護前重測次數(fail_state為closed)
-    def GetReopenCount(fixtureId,board,testtype):
+    # 取得程式維護前重測次數(fail_state為closed)
+    def GetClosedTimeByProgram(programId,board,testtype):
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)
+            element='component'
+
+            if(testtype=='analog'):
+                testtype=''' ='analog' '''
+
+            elif(testtype=='analog_function'):
+                testtype=''' in ('analog_powered','power_on') '''       
+            
+            elif(testtype=='digital'):
+                testtype=''' in ('digital','boundary_scan') '''  
+
+            elif(testtype=='open'):
+                testtype=''' ='open' '''
+                element='BRC'
+
+            elif(testtype=='short'):
+                testtype=''' ='short' '''
+                element='BRC'        
+
+            query=''' select {0}, max(update_time_op) as update_time from program_fail_18275
+                      where  program_id='{1}' and board='{2}' and fail_state = 2 
+                      and flag=1  and test_type {3} and end_time>='{4}' 
+                      group by {0} '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+
+            rows=Common.FetchDB(query)       
+            return(rows)   
+
+        except Exception as inst:
+            print(inst) 
+
+    # 取得治具維護後測試失敗次數
+    def GetReopenCountByFixture(fixtureId,board,testtype):
         try:
             after_enddate=Common.BeforeNWeekDate(20)            
             element='component'
@@ -213,12 +334,47 @@ class Common(Resource):
         except Exception as inst:
             print(inst)
 
+    # 取得程式維護後測試失敗次數
+    def GetReopenCountByProgram(programId,board,testtype):
+        try:
+            after_enddate=Common.BeforeNWeekDate(20)            
+            element='component'
+
+            if(testtype=='analog'):
+                testtype=''' ='analog' '''
+
+            elif(testtype=='analog_function'):
+                testtype=''' in ('analog_powered','power_on') '''       
+            
+            elif(testtype=='digital'):
+                testtype=''' in ('digital','boundary_scan') '''  
+
+            elif(testtype=='open'):
+                testtype=''' ='open' '''
+                element='BRC'
+
+            elif(testtype=='short'):
+                testtype=''' ='short' '''
+                element='BRC'        
+
+            query=''' select count({0}) as reopencount,{0} from  
+                      (
+                        select {0},update_time_op from program_fail_18275
+                        where program_id='{1}' and board='{2}' and test_type {3} and fail_state=2 
+                        and flag=1 and end_time>='{4}'  
+                        group by {0},update_time_op
+                      ) a group by {0},update_time_op '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
+
+
+            rows=Common.FetchDB(query)       
+            return(rows)   
+
+        except Exception as inst:
+            print(inst)
+
+
     def GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype):
         try:
-            if(testtype=='open' or 'short'):
-                element='BRC'
-            else:
-                element='component'
             opening_result=[]
             ongoing_result=[]
             closed_result=[]
@@ -364,6 +520,144 @@ class Common(Resource):
             return(result)
         except Exception as inst:
             print(inst)
+    
+    def GetCaseBRCDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,testtype):
+        try:
+            opening_result=[]
+            ongoing_result=[]
+            closed_result=[]
+            
+            for row in rows:
+                    
+                if(row['fail_state']==0):
+                    opening=[]
+                    probe=[]
+                    count=[]
+                    probe.append(row['BRC'])
+                    opening.append(probe)
+                    opening.append([row['failcount']])
+                    opening.append([totalboard])
+                    if(row['BRC'] in count_dict):
+                        opening.append([[count_dict[row['BRC']]]+1])
+                    else:
+                        opening.append([1])
+                    opening_result.append(opening)
+
+
+                elif(row['fail_state']==1):
+                    ongoing=[]
+                    probe=[]
+                    count=[]
+                    beforecount=[]
+                    aftercount=[]
+                    solution=[]
+
+                    probe.append(row['BRC'])
+                    count.append(row['failcount'])
+                    count.append(totalboard)
+
+                    if(row['BRC'] in beforefail_dict):
+                        beforecount.append(beforefail_dict[row['BRC']])
+                    else:
+                        beforecount.append(0)
+
+                    if(row['BRC'] in beforetotal_dict):
+                        beforecount.append(beforetotal_dict[row['BRC']])
+                    else:
+                        beforecount.append(totalboard)
+
+                    if(row['BRC'] in afterfail_dict):
+                        aftercount.append(afterfail_dict[row['BRC']])
+                    else:
+                        aftercount.append(0)
+
+                    if(row['BRC'] in aftertotal_dict):
+                        aftercount.append(aftertotal_dict[row['BRC']])
+                    else:
+                        aftercount.append(0)
+
+                    solution.append(row['update_op'])
+                    solution.append(row['solution1'])
+                    solution.append(row['solution2'])
+                    solution.append(row['solution3'])
+                    solution.append(row['solution_memo'])
+                    solution.append(str(row['update_time_op']))
+                    if(row['BRC'] in count_dict):
+                        solution.append(count_dict[row['BRC']])
+                    else:
+                        solution.append(1)
+                    
+                    ongoing.append(probe)
+                    ongoing.append(count)
+                    ongoing.append(beforecount)
+                    ongoing.append(aftercount)
+                    ongoing.append(solution)
+
+                    ongoing_result.append(ongoing)
+
+                elif(row['fail_state']==2):
+                    closed=[]
+                    probe=[]
+                    count=[]
+                    beforecount=[]
+                    aftercount=[]
+                    solution=[]
+
+                    probe.append(row['BRC'])
+                    count.append(row['failcount'])
+                    count.append(totalboard)
+
+                    if(row['BRC'] in beforefail_dict):
+                        beforecount.append(beforefail_dict[row['BRC']])
+                    else:
+                        beforecount.append(0)
+                    
+                    if(row['BRC'] in beforetotal_dict):
+                        beforecount.append(beforetotal_dict[row['BRC']])
+                    else:
+                        beforecount.append(totalboard)
+
+                    if(row['BRC'] in afterfail_dict):
+                        aftercount.append(afterfail_dict[row['BRC']])
+                    else:
+                        aftercount.append(0)
+
+                    if(row['BRC'] in aftertotal_dict):
+                        aftercount.append(aftertotal_dict[row['BRC']])
+                    else:
+                        aftercount.append(0)                        
+
+                    solution.append(row['update_op'])
+                    solution.append(row['solution1'])
+                    solution.append(row['solution2'])
+                    solution.append(row['solution3'])
+                    solution.append(row['solution_memo'])
+                    solution.append(str(row['update_time_op']))
+                    if(row['BRC'] in count_dict):
+                        solution.append(count_dict[row['BRC']])
+                    else:
+                        solution.append(1)
+
+                    closed.append(probe)
+                    closed.append(count)
+                    closed.append(beforecount)
+                    closed.append(aftercount)
+                    closed.append(solution)
+
+                    closed_result.append(closed)
+
+            result=({'payload':
+                        {
+                            'opening':opening_result,
+                            'ongoing':ongoing_result,
+                            'closed':closed_result
+                        }
+                    })
+
+            return(result)
+        except Exception as inst:
+            print(inst)
+
     def FetchDB(query):
         try:
             conn = mysql2.connect()
