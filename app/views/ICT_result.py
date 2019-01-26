@@ -1208,18 +1208,20 @@ class PinsCaseDistribution(Resource):
 
         after_enddate=Common.BeforeNWeekDate(weeknum)
 
-        testtypelist=['digital_bscan','short','analog','check_pins','pwr_supply','open','analog_function','testjet']
+        testtypelist=['digital_bscan','short','analog','pwr_supply','open','analog_function','testjet']
 
         # 取得n週測板總數及重測率
         query=''' select case when test_type='boundary_scan' then 'digital_bscan'
                 when test_type='digital' then 'digital_bscan'
-                when test_type='power_on' then 'pwr_supply'
-                when test_type='analog_powered' then 'analog_function'
                 else test_type end as test_type,fail_state,fail_number from
                 (
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        select component,fail_state,
+                        case when test_type='power_on' then 'pwr_analog'
+                        when test_type='analog_powered' then 'pwr_analog'
+                        else test_type end as test_type                        
+                        from pins_fail_18275
                         where fixture_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type in ('digital','boundary_scan','analog_powered','power_on','analog')
                         group by component,fail_state
@@ -1227,7 +1229,7 @@ class PinsCaseDistribution(Resource):
                     union
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select concat(component,'/',pins) as component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        select concat(component,'/',pins) as component,fail_state,test_type from pins_fail_18275
                         where fixture_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type = 'testjet'
                         group by component,pins,fail_state
@@ -1235,13 +1237,14 @@ class PinsCaseDistribution(Resource):
                     union
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select BRC as component,fail_state,test_type,update_time_op from ICT_Project.pins_fail_18275
+                        select BRC as component,fail_state,test_type,update_time_op from pins_fail_18275
                         where fixture_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type in ('open','short')
                         group by BRC,fail_state
                     ) a group by fail_state,test_type
                 ) t '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
 
+        print(query)
 
         rows=Common.FetchDB(query)
         # 建立每種測試的狀態dict
@@ -1249,10 +1252,8 @@ class PinsCaseDistribution(Resource):
         digital_bscan_dict=copy.deepcopy(state_dict)
         short_dict=copy.deepcopy(state_dict)
         analog_dict=copy.deepcopy(state_dict)
-        check_pins_dict=copy.deepcopy(state_dict)
-        pwr_supply_dict=copy.deepcopy(state_dict)
+        pwr_analog_dict=copy.deepcopy(state_dict)
         open_dict=copy.deepcopy(state_dict)
-        analog_func_dict=copy.deepcopy(state_dict)
         testjet_dict=copy.deepcopy(state_dict)
 
         # 從數據庫查詢結果更新dict
@@ -1281,21 +1282,14 @@ class PinsCaseDistribution(Resource):
                 elif(row['fail_state']==2):
                     analog_dict['closed']=row['fail_number']    
             
-            elif(row['test_type'].lower()=='check_pins'):
-                if(row['fail_state']==0):
-                    check_pins_dict['opening']=row['fail_number']
-                elif(row['fail_state']==1):
-                    check_pins_dict['ongoing']=row['fail_number']
-                elif(row['fail_state']==2):
-                    check_pins_dict['closed']=row['fail_number']   
 
-            elif(row['test_type'].lower()=='pwr_supply'):
+            elif(row['test_type'].lower()=='pwr_analog'):
                 if(row['fail_state']==0):
-                    pwr_supply_dict['opening']=row['fail_number']
+                    pwr_analog_dict['opening']=row['fail_number']
                 elif(row['fail_state']==1):
-                    pwr_supply_dict['ongoing']=row['fail_number']
+                    pwr_analog_dict['ongoing']=row['fail_number']
                 elif(row['fail_state']==2):
-                    pwr_supply_dict['closed']=row['fail_number']        
+                    pwr_analog_dict['closed']=row['fail_number']        
 
             elif(row['test_type'].lower()=='open'):
                 if(row['fail_state']==0):
@@ -1303,15 +1297,7 @@ class PinsCaseDistribution(Resource):
                 elif(row['fail_state']==1):
                     open_dict['ongoing']=row['fail_number']
                 elif(row['fail_state']==2):
-                    open_dict['closed']=row['fail_number']                                                                
-
-            elif(row['test_type'].lower()=='analog_function'):
-                if(row['fail_state']==0):
-                    analog_func_dict['opening']=row['fail_number']
-                elif(row['fail_state']==1):
-                    analog_func_dict['ongoing']=row['fail_number']
-                elif(row['fail_state']==2):
-                    analog_func_dict['closed']=row['fail_number']               
+                    open_dict['closed']=row['fail_number']                                                                            
 
             elif(row['test_type'].lower()=='testjet'):
                 if(row['fail_state']==0):
@@ -1326,11 +1312,9 @@ class PinsCaseDistribution(Resource):
                     {
                         'digital_bscan':digital_bscan_dict,
                         'short':short_dict,                    
-                        'analog':analog_dict,
-                        'check_pins':check_pins_dict,                           
-                        'pwr_supply':pwr_supply_dict,
+                        'analog':analog_dict,                         
+                        'pwr_analog':pwr_analog_dict,
                         'open':open_dict,
-                        'analog_function':analog_func_dict,
                         'testjet':testjet_dict
                     }
                 })
@@ -1735,18 +1719,20 @@ class ProgCaseDistribution(Resource):
 
         after_enddate=Common.BeforeNWeekDate(weeknum)
 
-        testtypelist=['digital_bscan','short','analog','check_pins','pwr_supply','open','analog_function','testjet']
+        testtypelist=['digital_bscan','short','analog','pwr_supply','open','analog_function','testjet']
 
         # 取得n週測板總數及重測率
         query=''' select case when test_type='boundary_scan' then 'digital_bscan'
                 when test_type='digital' then 'digital_bscan'
-                when test_type='power_on' then 'pwr_supply'
-                when test_type='analog_powered' then 'analog_function'
                 else test_type end as test_type,fail_state,fail_number from
                 (
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        select component,fail_state,
+                        case when test_type='power_on' then 'pwr_analog'
+                        when test_type='analog_powered' then 'pwr_analog'
+                        else test_type end as test_type                   
+                        from program_fail_18275
                         where program_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type in ('digital','boundary_scan','analog_powered','power_on','analog')
                         group by component,fail_state
@@ -1754,7 +1740,7 @@ class ProgCaseDistribution(Resource):
                     union
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select concat(component,'/',pins) as component,fail_state,test_type from ICT_Project.pins_fail_18275
+                        select concat(component,'/',pins) as component,fail_state,test_type from program_fail_18275
                         where program_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type = 'testjet'
                         group by component,pins,fail_state
@@ -1762,7 +1748,7 @@ class ProgCaseDistribution(Resource):
                     union
                     select count(a.component) as fail_number,test_type,fail_state from  
                     (
-                        select BRC as component,fail_state,test_type,update_time_op from ICT_Project.pins_fail_18275
+                        select BRC as component,fail_state,test_type,update_time_op from program_fail_18275
                         where program_id='{0}' and board='{1}' and end_time>='{2}'  
                         and flag=1 and test_type in ('open','short')
                         group by BRC,fail_state
@@ -1775,10 +1761,8 @@ class ProgCaseDistribution(Resource):
         digital_bscan_dict=copy.deepcopy(state_dict)
         short_dict=copy.deepcopy(state_dict)
         analog_dict=copy.deepcopy(state_dict)
-        check_pins_dict=copy.deepcopy(state_dict)
-        pwr_supply_dict=copy.deepcopy(state_dict)
+        pwr_analog_dict=copy.deepcopy(state_dict)
         open_dict=copy.deepcopy(state_dict)
-        analog_func_dict=copy.deepcopy(state_dict)
         testjet_dict=copy.deepcopy(state_dict)
 
         # 從數據庫查詢結果更新dict
@@ -1805,23 +1789,15 @@ class ProgCaseDistribution(Resource):
                 elif(row['fail_state']==1):
                     analog_dict['ongoing']=row['fail_number']
                 elif(row['fail_state']==2):
-                    analog_dict['closed']=row['fail_number']    
-            
-            elif(row['test_type'].lower()=='check_pins'):
-                if(row['fail_state']==0):
-                    check_pins_dict['opening']=row['fail_number']
-                elif(row['fail_state']==1):
-                    check_pins_dict['ongoing']=row['fail_number']
-                elif(row['fail_state']==2):
-                    check_pins_dict['closed']=row['fail_number']   
+                    analog_dict['closed']=row['fail_number']     
 
-            elif(row['test_type'].lower()=='pwr_supply'):
+            elif(row['test_type'].lower()=='pwr_analog'):
                 if(row['fail_state']==0):
-                    pwr_supply_dict['opening']=row['fail_number']
+                    pwr_analog_dict['opening']=row['fail_number']
                 elif(row['fail_state']==1):
-                    pwr_supply_dict['ongoing']=row['fail_number']
+                    pwr_analog_dict['ongoing']=row['fail_number']
                 elif(row['fail_state']==2):
-                    pwr_supply_dict['closed']=row['fail_number']        
+                    pwr_analog_dict['closed']=row['fail_number']        
 
             elif(row['test_type'].lower()=='open'):
                 if(row['fail_state']==0):
@@ -1830,14 +1806,6 @@ class ProgCaseDistribution(Resource):
                     open_dict['ongoing']=row['fail_number']
                 elif(row['fail_state']==2):
                     open_dict['closed']=row['fail_number']                                                                
-
-            elif(row['test_type'].lower()=='analog_function'):
-                if(row['fail_state']==0):
-                    analog_func_dict['opening']=row['fail_number']
-                elif(row['fail_state']==1):
-                    analog_func_dict['ongoing']=row['fail_number']
-                elif(row['fail_state']==2):
-                    analog_func_dict['closed']=row['fail_number']               
 
             elif(row['test_type'].lower()=='testjet'):
                 if(row['fail_state']==0):
@@ -1852,11 +1820,9 @@ class ProgCaseDistribution(Resource):
                     {
                         'digital_bscan':digital_bscan_dict,
                         'short':short_dict,                    
-                        'analog':analog_dict,
-                        'check_pins':check_pins_dict,                           
-                        'pwr_supply':pwr_supply_dict,
+                        'analog':analog_dict,                          
+                        'pwr_analog':pwr_analog_dict,
                         'open':open_dict,
-                        'analog_function':analog_func_dict,
                         'testjet':testjet_dict
                     }
                 })
