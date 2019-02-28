@@ -637,7 +637,7 @@ class DataApiBatch(Resource):
 			print(str(inst))
 			logging.getLogger('error_Logger').error('ICT Data MySql Write Err:'+item)
 			logging.getLogger('error_Logger').error(inst)
-			with codecs.open('./Log/ErrPost/Test_{0}.sql'.format(dt.now().strftime('%Y%m%d%H%M%S')),'wb', "utf-8") as ErrOut :
+			with codecs.open('./Log/ErrPost/fulllog_batch_{0}.sql'.format(dt.now().strftime('%Y%m%d')),'ab', "utf-8") as ErrOut :
 				ErrOut.write(item)
 				ErrOut.write('\n')
 				ErrOut.close()

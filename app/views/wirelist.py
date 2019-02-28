@@ -142,7 +142,7 @@ class Wirelist(Resource):
 			print('ICT Test Data MySql Write Err:'+Items)
 			logging.getLogger('error_Logger').error('FulearnV4 Test Data MySql Write Err:'+Items)
 			logging.getLogger('error_Logger').error(inst)
-			with codecs.open('./Log/ErrPost/Test_{0}.sql'.format(dt.now().strftime('%Y%m%d%H%M%S')),'wb', "utf-8") as ErrOut :
+			with codecs.open('./Log/ErrPost/wirelist_{0}.sql'.format(dt.now().strftime('%Y%m%d')),'ab', "utf-8") as ErrOut :
 				ErrOut.write(Items)
 				ErrOut.write('\n')
 				ErrOut.close()

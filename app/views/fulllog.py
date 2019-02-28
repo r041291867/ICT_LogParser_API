@@ -107,11 +107,13 @@ class DataApi(Resource):
 							if (db_sp_new[4] == 'A-JUM') :
 								del db_sp_new[3]		#刪除不必要元素
 								del db_sp_new[3]
+								db_sp_new.append(board)									
 								print (db_sp_new)
 
 							elif (db_sp_new[4] == 'TS'):
 								del db_sp_new[3]		#刪除不必要元素
 								del db_sp_new[3]
+								db_sp_new.append(board)	
 								print (db_sp_new)
 
 							elif (db_sp_new[4] == 'A-CAP' or db_sp_new[4] == 'A-RES' or db_sp_new[4] == 'A-MEA' \
@@ -125,6 +127,7 @@ class DataApi(Resource):
 									del db_sp_new[4] #analog powered不需要test_type
 								elif(isAnalogPowered and db_sp_new[4] == 'A-MEA'):
 									del db_sp_new[4] #PowerOn不需要component、test_type
+								db_sp_new.append(board)	
 								print (db_sp_new)
 							line = fp.readline()
 				
@@ -155,7 +158,7 @@ class DataApi(Resource):
 										db_sp_new.append(db_sp[3])
 									elif(db_sp[0]=='Measured'):
 										db_sp_new.append(db_sp[1])
-										db_sp_new.append(db_sp[3])
+										db_sp_new.append(db_sp[3])									
 										print(db_sp_new)
 										del db_sp_new[6:11]
 										
@@ -172,6 +175,7 @@ class DataApi(Resource):
 						# 若pass無BRC和fail時間
 						db_sp_new.append(None)
 						db_sp_new.append(None)
+						db_sp_new.append(board)	
 						print(db_sp_new)
 					else:	
 						line=fp.readline()						
@@ -188,6 +192,7 @@ class DataApi(Resource):
 							elif (sp[0]=='RPT' and '(' in db_sp[0]):
 								db_sp_new.append(test_time)
 								db_sp_new.append(db_sp[0].replace('(','').replace(')',''))
+								db_sp_new.append(board)	
 								print(db_sp_new)
 								# 處理多筆PF測試fail log
 								del db_sp_new[4:7]
@@ -198,6 +203,7 @@ class DataApi(Resource):
 
 				elif (len(sp)>0 and sp[0] == 'TS') :
 					db_sp_new = [machine,sn_code,sp[1],sp[5],EndTime]
+					db_sp_new.append(board)	
 					print (db_sp_new)
 
 					#若測試狀態為失敗,需parsing fail report
@@ -252,7 +258,9 @@ class DataApi(Resource):
 										else:db_sp_new.append(None)
 												
 									#讀到Common視為其中一項fail結束
-									elif (db_sp[0]=='Common'):print(db_sp_new)
+									elif (db_sp[0]=='Common'):
+										db_sp_new.append(board)	
+										print(db_sp_new)
 										
 									#fail Report結束
 									elif ('End' in db_sp[0]):break
@@ -270,6 +278,7 @@ class DataApi(Resource):
 					else : db_sp_new.append(sp[4])
 					db_sp_new.append(sp[1])
 					db_sp_new.append(EndTime)
+					db_sp_new.append(board)						
 					print (db_sp_new)
 					
 				# 上電測試-BoundaryScan result
@@ -280,6 +289,7 @@ class DataApi(Resource):
 					db_sp_new.append(sp[1])
 					db_sp_new.append(sp[2])
 					db_sp_new.append(EndTime)
+					db_sp_new.append(board)	
 					print (db_sp_new)
 
 
@@ -386,6 +396,7 @@ class DataApi(Resource):
 								if (db_sp_new[4] == 'A-JUM'):
 									del db_sp_new[3]		#刪除不必要元素
 									del db_sp_new[3]
+									db_sp_new.append(board)
 									insert_list.append(self.CombineSqlStr(db_sp_new,1))
 									
 								elif (db_sp_new[4] == 'A-CAP' or db_sp_new[4] == 'A-RES' or db_sp_new[4] == 'A-MEA' \
@@ -404,18 +415,14 @@ class DataApi(Resource):
 										del db_sp_new[4]     #analog powered不需要test_type
 										dbType=8
 
-									if(dbType==4 and board=='73-18275-04'):
-										dbType=41
-										db_sp_new.append(board)					
-
+									db_sp_new.append(board)
 									insert_list.append(self.CombineSqlStr(db_sp_new,dbType))
 									
 								line = fp.readline()
 
 					# 模擬測試-Testjet
 					elif (len(sp)>0 and sp[0] == 'TJET'):
-						db_sp_new = [machine,sn_code,sp[1],sp[3],EndTime,board]
-						
+						db_sp_new = [machine,sn_code,sp[1],sp[3],EndTime,board]					
 						insert_list.append(self.CombineSqlStr(db_sp_new,3))
 
 						# testjet fail RPT parsing
@@ -457,6 +464,7 @@ class DataApi(Resource):
 							# 若pass無BRC和fail時間
 							db_sp_new.append(None)
 							db_sp_new.append(None)
+							db_sp_new.append(board)							
 							insert_list.append(self.CombineSqlStr(db_sp_new,9))
 						else:	
 							line=fp.readline()						
@@ -472,6 +480,7 @@ class DataApi(Resource):
 								elif (sp[0]=='RPT' and '(' in db_sp[0]):
 									db_sp_new.append(test_time)
 									db_sp_new.append(db_sp[0].replace('(','').replace(')',''))
+									db_sp_new.append(board)										
 									insert_list.append(self.CombineSqlStr(db_sp_new,9))
 									del db_sp_new[4:7]
 								elif ('End' in sp[1] or 'PIN' in sp[0]):
@@ -482,6 +491,7 @@ class DataApi(Resource):
 					# 模擬測試-open_short
 					elif (len(sp)>0 and sp[0] == 'TS') :
 						db_sp_new = [machine,sn_code,sp[1],EndTime]
+						db_sp_new.append(board)	
 						insert_list.append(self.CombineSqlStr(db_sp_new,2))
 						#若測試狀態為失敗,需parsing fail report
 						if (sp[1]=='1'):
@@ -535,7 +545,7 @@ class DataApi(Resource):
 													
 										#讀到Common視為其中一項fail結束
 										elif (db_sp[0]=='Common'):
-
+											db_sp_new.append(board)	
 											insert_list.append(self.CombineSqlStr(db_sp_new,21))
 											
 										#fail Report結束
@@ -554,6 +564,7 @@ class DataApi(Resource):
 						else : db_sp_new.append(sp[4])
 						db_sp_new.append(sp[1])
 						db_sp_new.append(EndTime)
+						db_sp_new.append(board)							
 						insert_list.append(self.CombineSqlStr(db_sp_new,6))
 					
 					# 上電測試-BoundaryScan result
@@ -564,7 +575,7 @@ class DataApi(Resource):
 						db_sp_new.append(sp[1])
 						db_sp_new.append(sp[2])
 						db_sp_new.append(EndTime)
-
+						db_sp_new.append(board)	
 						insert_list.append(self.CombineSqlStr(db_sp_new,7))
 					line = fp.readline()
 
@@ -586,7 +597,7 @@ class DataApi(Resource):
 	def CheckRepeat(self,machine,sn,end_time):
 		conn = mysql2.connect()
 		cursor = conn.cursor()
-		cursor.execute("select count(*) from ICT_Project_Realtime.ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
+		cursor.execute("select count(*) from ict_result where machine='"+machine+"' and sn='"+sn+"' and end_time='"+str(end_time)+"'")
 		result=cursor.fetchall()
 		return (result[0]['count(*)']>0)
 
@@ -605,33 +616,31 @@ class DataApi(Resource):
 		#type 8:  analog_powered
 		#type 9:  PF test
 		if (type == 0) :
-			Items = 'insert ignore into ICT_Project_Realtime.ict_result(board,operator,machine,sn,status,start_time,end_time,log_time) values ('
+			Items = 'insert ignore into ict_result(board,operator,machine,sn,status,start_time,end_time,log_time) values ('
 		elif (type == 1) :
-			Items = 'insert ignore into ICT_Project_Realtime.preshort_result(machine,sn,component,status,measured,limit_type,high_limit,low_limit,end_time) values ('
+			Items = 'insert ignore into preshort_result(machine,sn,component,status,measured,limit_type,high_limit,low_limit,end_time,board) values ('
 		elif (type == 2) :
-			Items = 'insert ignore into ICT_Project_Realtime.open_short_result(machine,sn,status,end_time) values ('
+			Items = 'insert ignore into open_short_result(machine,sn,status,end_time,board) values ('
 		elif (type == 21) :
-			Items = 'insert ignore into ICT_Project_Realtime.open_short_fail(machine,sn,end_time,fail_time,fail_type,fail_no,from_point,from_BRC,from_ohms,end_point,end_BRC,end_ohms) values ('
+			Items = 'insert ignore into open_short_fail(machine,sn,end_time,fail_time,fail_type,fail_no,from_point,from_BRC,from_ohms,end_point,end_BRC,end_ohms,board) values ('
 		elif (type == 3) :
-			Items = 'insert ignore into ICT_Project_Realtime.testjet_result(machine,sn,status,device,end_time,board) values ('
+			Items = 'insert ignore into testjet_result(machine,sn,status,device,end_time,board) values ('
 		elif (type == 31) :
-			Items = 'insert ignore into ICT_Project_Realtime.testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,node,measured,BRC) values ('		
+			Items = 'insert ignore into testjet_fail(machine,sn,status,device,end_time,board,fail_no,pins,node,measured,BRC) values ('		
 		elif (type == 4) :
-			Items = 'insert ignore into ICT_Project_Realtime.analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
-		elif (type == 41):
-			Items = 'insert ignore into ICT_Project_Realtime.analog_result_18275(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('		
+			Items = 'insert ignore into analog_result(machine,sn,component,block_status,test_type,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('
 		elif (type == 5) :
-			Items = 'insert ignore into ICT_Project_Realtime.power_on_result(machine,sn,power_check_type,block_status,status,measured,power_check,limit_type,nominal,high_limit,low_limit,end_time) values ('				
+			Items = 'insert ignore into power_on_result(machine,sn,power_check_type,block_status,status,measured,power_check,limit_type,nominal,high_limit,low_limit,end_time,board) values ('				
 		elif (type == 6) :
-			Items = 'insert ignore into ICT_Project_Realtime.digital_result(machine,sn,component,status,end_time) values ('
+			Items = 'insert ignore into digital_result(machine,sn,component,status,end_time,board) values ('
 		elif (type == 7) :
-			Items = 'insert ignore into ICT_Project_Realtime.boundary_scan_result(machine,sn,component,status,end_time) values ('
+			Items = 'insert ignore into boundary_scan_result(machine,sn,component,status,end_time,board) values ('
 		elif (type == 8) :
-			Items = 'insert ignore into ICT_Project_Realtime.analog_powered_result(machine,sn,component,block_status,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time) values ('
+			Items = 'insert ignore into analog_powered_result(machine,sn,component,block_status,status,measured,test_condition,limit_type,nominal,high_limit,low_limit,end_time,board) values ('
 		elif (type == 9) :
-			Items = 'insert ignore into ICT_Project_Realtime.pins_check_result(machine,sn,end_time,status,fail_time,BRC) values ('
-			
-		
+			Items = 'insert ignore into pins_check_result(machine,sn,end_time,status,fail_time,BRC,board) values ('
+
+
 		for item in lists:
 			if str(item)=="None":Items=Items+'null'+','
 			else : Items = Items + '"' + str(item) + '"' + ','
@@ -657,8 +666,8 @@ class DataApi(Resource):
 			print(str(inst))
 			logging.getLogger('error_Logger').error('ICT Data MySql Write Err:'+item)
 			logging.getLogger('error_Logger').error(inst)
-			with codecs.open('./Log/ErrPost/Test_{0}.sql'.format(dt.now().strftime('%Y%m%d%H%M%S')),'wb', "utf-8") as ErrOut :
-				ErrOut.write(item)
+			with codecs.open('./Log/ErrPost/fulllog_{0}.sql'.format(dt.now().strftime('%Y%m%d')),'ab', "utf-8") as ErrOut :
+				ErrOut.write(inst+":"+item)
 				ErrOut.write('\n')
 				ErrOut.close()
 			try:

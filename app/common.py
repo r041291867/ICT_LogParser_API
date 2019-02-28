@@ -58,7 +58,7 @@ class Common(Resource):
     def GetTotalBoardByFixture(fixtureId,board):
         after_enddate=Common.BeforeNWeekDate(20)
 
-        query=''' select sn,max(end_time) as end_time from ict_detail_result 
+        query=''' select sn,max(end_time) as end_time from ICT_Project_Test_Realtime.ict_detail_result 
                   where fixture_id='{0}' and board='{1}' 
                   and flag=1  and end_time>='{2}' group by sn '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
 
@@ -69,7 +69,7 @@ class Common(Resource):
     def GetTotalBoardByProgram(programId,board):
         after_enddate=Common.BeforeNWeekDate(20)
 
-        query=''' select sn,max(end_time) as end_time from ict_detail_result 
+        query=''' select sn,max(end_time) as end_time from ICT_Project_Test_Realtime.ict_detail_result 
                   where program_id='{0}' and board='{1}' 
                   and flag=1  and end_time>='{2}' group by sn '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))
 
@@ -101,10 +101,10 @@ class Common(Resource):
 
             query=''' select count({0}) as failcount,{0} from
                       (
-                        select a.{0},update_time_op,maxupdatetime from pins_fail_18275  a
+                        select a.{0},update_time_op,maxupdatetime from pins_fail  a
                         inner join 
                         (
-                            select {0},max(update_time_op) as maxupdatetime from pins_fail_18275 where fail_state=2 group by {0}
+                            select {0},max(update_time_op) as maxupdatetime from ICT_Project_Test_Realtime.pins_fail where fail_state=2 group by {0}
                         )b on a.{0}=b.{0} 
                         where  fixture_id='{1}' and board='{2}' and fail_state between 0 and 1  and flag=1
                         and test_type {3} and (a.update_time_op>b.maxupdatetime) and end_time>='{4}'
@@ -143,10 +143,10 @@ class Common(Resource):
 
             query=''' select count({0}) as failcount,{0} from
                       (
-                        select a.{0},update_time_op,maxupdatetime from program_fail_18275  a
+                        select a.{0},update_time_op,maxupdatetime from ICT_Project_Test_Realtime.program_fail  a
                         inner join 
                         (
-                            select {0},max(update_time_op) as maxupdatetime from program_fail_18275 where fail_state=2 group by {0}
+                            select {0},max(update_time_op) as maxupdatetime from ICT_Project_Test_Realtime.program_fail where fail_state=2 group by {0}
                         )b on a.{0}=b.{0} 
                         where  program_id='{1}' and board='{2}' and fail_state between 0 and 1  and flag=1
                         and test_type {3} and (a.update_time_op>b.maxupdatetime) and end_time>='{4}'
@@ -183,7 +183,7 @@ class Common(Resource):
                 testtype=''' ='short' '''
                 element='BRC'        
 
-            query=''' select count({0}) as failcount,{0} from  pins_fail_18275
+            query=''' select count({0}) as failcount,{0} from  ICT_Project_Test_Realtime.pins_fail
                       where  fixture_id='{1}' and board='{2}' 
                       and fail_state = 2 and flag=1 and test_type {3} and end_time>='{4}' 
                       group by {0} '''.format(element,fixtureId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
@@ -217,7 +217,7 @@ class Common(Resource):
                 testtype=''' ='short' '''
                 element='BRC'        
 
-            query=''' select count({0}) as failcount,{0} from  program_fail_18275
+            query=''' select count({0}) as failcount,{0} from  ICT_Project_Test_Realtime.program_fail
                       where  program_id='{1}' and board='{2}' 
                       and fail_state = 2 and flag=1 and test_type {3} and end_time>='{4}' 
                       group by {0} '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
@@ -251,7 +251,7 @@ class Common(Resource):
                 testtype=''' ='short' '''
                 element='BRC'        
 
-            query=''' select {0}, max(update_time_op) as update_time from pins_fail_18275
+            query=''' select {0}, max(update_time_op) as update_time from ICT_Project_Test_Realtime.pins_fail
                       where  fixture_id='{1}' and board='{2}' and fail_state = 2 
                       and flag=1  and test_type {3} and end_time>='{4}' 
                       group by {0} '''.format(element,fixtureId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
@@ -285,7 +285,7 @@ class Common(Resource):
                 testtype=''' ='short' '''
                 element='BRC'        
 
-            query=''' select {0}, max(update_time_op) as update_time from program_fail_18275
+            query=''' select {0}, max(update_time_op) as update_time from ICT_Project_Test_Realtime.program_fail
                       where  program_id='{1}' and board='{2}' and fail_state = 2 
                       and flag=1  and test_type {3} and end_time>='{4}' 
                       group by {0} '''.format(element,programId,board,testtype,after_enddate.strftime('%Y-%m-%d'))
@@ -321,7 +321,7 @@ class Common(Resource):
 
             query=''' select count({0}) as reopencount,{0} from  
                       (
-                        select {0},update_time_op from pins_fail_18275
+                        select {0},update_time_op from ICT_Project_Test_Realtime.pins_fail
                         where fixture_id='{1}' and board='{2}' and test_type {3} and fail_state=2 
                         and flag=1 and end_time>='{4}'  
                         group by {0},update_time_op
@@ -359,7 +359,7 @@ class Common(Resource):
 
             query=''' select count({0}) as reopencount,{0} from  
                       (
-                        select {0},update_time_op from program_fail_18275
+                        select {0},update_time_op from ICT_Project_Test_Realtime.program_fail
                         where program_id='{1}' and board='{2}' and test_type {3} and fail_state=2 
                         and flag=1 and end_time>='{4}'  
                         group by {0},update_time_op

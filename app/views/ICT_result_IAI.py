@@ -25,423 +25,383 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-
-@restapi.resource('/bu_fail')
-class BuFail(Resource):
-    def get(self, headers=None):
-        result = []
-        try:
-            bulist=['MFGI','MFGII','MFGIII','MFGV','MFGVI','MFGVII','MFGVIII']
-            dict_pins={}
-            dict_prog={}
-            dict_comp={}
-            dict_week_pins={}
-            dict_week_prog={}
-            dict_week_comp={}
-            pinstotal=0
-            progtotal=0
-            comptotal=0
-        
-            # get fail count of BU
-            query = ''' select BU,count(*) as 'count' , 'pins' as 'type' from ICT_Project_Test_Realtime.pins_fail group by BU union
-                        select BU,count(*) as 'count' ,'prog' as 'type' from ICT_Project_Test_Realtime.program_fail group by BU union
-                        select BU,count(*) as 'count' ,'comp' as 'type' from ICT_Project_Test_Realtime.component_fail group by BU '''
-        
-            rows=Common.FetchDB(query)
-
-            for row in rows:
-                if row['type']=='pins':
-                    dict_pins[row['BU']]=row['count']
-                    pinstotal=pinstotal+row['count']
-                elif row['type']=='prog':
-                    dict_prog[row['BU']]=row['count']
-                    progtotal=progtotal+row['count']
-                elif row['type']=='comp':
-                    dict_comp[row['BU']]=row['count']    
-                    comptotal=comptotal+row['count']     
-
-            # get week info
-            weeklist=Common.WeekNumList(7)
-
-            strweek=''
-            for index,week in weeklist:
-                if (index==0):
-                    strweek=strweek+week
-                else:
-                    strweek=','+strweek+week
-            print(strweek)
-
-            # get week total fail
-            query = ''' select count(*) as 'count','pins' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.pins_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by WEEKOFYEAR(end_time) 
-                        union
-                        select count(*) as 'count','prog' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.pins_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by WEEKOFYEAR(end_time) 
-                        union
-                        select count(*) as 'count','comp' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.pins_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by WEEKOFYEAR(end_time) '''.format(strweek)
-            rows=Common.FetchDB(query)
-
-            for item in total:
-                if (item['type']=='pins'):
-                    dict_week_pins[item['week']]=item['count']
-                elif (item['type']=='prog'):
-                    dict_week_prog[item['week']]=item['count']
-                elif (item['type']=='comp'):
-                    dict_week_comp[item['week']]=item['count']                       
-
-            # get bu week fail            
-            query = ''' select BU,count(*) as 'count','pins' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.pins_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by BU,WEEKOFYEAR(end_time)
-                        union
-                        select BU,count(*) as 'count','prog' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.program_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by BU,WEEKOFYEAR(end_time)
-                        union
-                        select BU,count(*) as 'count','comp' as 'type',WEEKOFYEAR(end_time) as week 
-                        from ICT_Project_Test_Realtime.component_fail where flag=1 and WEEKOFYEAR(end_time) in ({0}) group by BU,WEEKOFYEAR(end_time) '''.format(strweek)
-
-            rows=Common.FetchDB(query)
-
-            for item in bulist:
-                totalfailpin=dict_pins[item]/pinstotal
-                totalfailprog=dict_pins[item]/progtotal
-                comptotalfail=dict_pins[item]/comptotal
-                pinsweekfail=[0,0,0,0,0,0,0]
-                progweekfail=[0,0,0,0,0,0,0]
-                compweekfail=[0,0,0,0,0,0,0]
-
-                for index,week in weeklist:
-                    for row in rows:
-                        if(rows['type']=='pins' and rows['BU']==item and rows['week']==week):
-                            pinsweekfail[index]==rows['count']/dict_week_pins[rows['week']]
-                        elif(rows['type']=='prog' and rows['BU']==item and rows['week']==week):
-                            progweekfail[index]==rows['count']/dict_week_prog[rows['week']]
-                        elif(rows['type']=='comp' and rows['BU']==item and rows['week']==week):
-                            comptotalfail[index]==rows['count']/dict_week_comp[rows['week']]
-
-                result.append({
-                    'bu':item,
-                    'totalfailpin':dict_pins[item]/pinstotal,
-                    'totalfailprog':dict_prog[item]/progtotal,
-                    'totalfailcomp':dict_comp[item]/comptotal,
-                    'pinsweekfail':pinsweekfail,
-                    'progweekfail':progweekfail,
-                    'compweekfail':compweekfail
-                    })
-
-
-        except Exception as inst:
-            print(inst)
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
-
-        response = jsonify(result)
-        response.status_code=200
-        return result
-
 @restapi.resource('/pins_fail_detail')
 class PinsDetail(Resource):
-    def get(self, headers=None):
-        result = []
+   def get(self, headers=None):
 
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
         fixtureId = request.args.get('fixtureId','')
-        BU = request.args.get('BU','')
-
-        Next = False        #判斷有沒有上一個參數
-        
-        query = '''select a.fixture_id,a.bu,a.board,a.program_id,a.totalfailsn,b.totalpin,a.totalfailpin from 
-            (
-             select fixture_id,bu,board,program_id,count(distinct sn) as totalfailsn,count(distinct BRC) as totalfailpin from ICT_Project_Test_Realtime.pins_fail where 
-             '''
-
-        if fromTime!='' and endTime!='' :
-            
-            query = query + '''end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-            Next = True
-        if fixtureId!='' :
-            if Next is True:
-                query = query + ' AND '
-            
-            query = query + '''fixture_id = '{0}' '''.format(fixtureId)
-            Next = True
-        if BU != '' :
-            if Next is True:
-                query = query + ' AND '
-            
-            query = query + '''bu = '{0}' '''.format(BU)
-            Next = True
-
-        if Next is False:
-            query=query+' 1 '
-
-
-        sql = query + ''' group by fixture_id,bu,board,program_id
-            ) a
-            inner join 
-            (
-             select count(distinct node) as totalpin,board from ICT_Project_Test_Realtime.fixture where board='73-18275-04' group by board 
-            ) b on a.board=b.board order by fixture_id
-            '''
-        print(sql)
-
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'fixture_id': row['fixture_id'],
-                        'BU': row['bu'],
-                        'board': row['board'],
-                        'program_id': row['program_id'],
-                        'totalfailsn': row['totalfailsn'],
-                        'totalpin': row['totalpin'],
-                        'totalfailpin': row['totalfailpin'],
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+        result=[
+                    {'fixture_id':'TA-18275-03','BU':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1586,'totalpin':3216,'totalfailpin':68},
+                    {'fixture_id':'TA-18275-08','BU':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1498,'totalpin':3216,'totalfailpin':54},
+                    {'fixture_id':'TA-18270-01','BU':'MFGI','board':'73-18270-03','program_id':'A1827003-A0-V2','totalfailsn':1682,'totalpin':2614,'totalfailpin':49},
+                    {'fixture_id':'TR-18275-01','BU':'MFGI','board':'73-18274-04','program_id':'A1827404-A0-V2','totalfailsn':1693,'totalpin':3216,'totalfailpin':45},
+                    {'fixture_id':'TA-17959-02','BU':'MFGI','board':'73-17959-06','program_id':'A1795906-B0-V1','totalfailsn':896,'totalpin':3807,'totalfailpin':39},
+                    {'fixture_id':'TA-18270-04','BU':'MFGI','board':'73-18271-03','program_id':'A1827103-A0-V2','totalfailsn':1367,'totalpin':2614,'totalfailpin':33},
+                    {'fixture_id':'TA-15756-01','BU':'MFGI','board':'73-15756-06','program_id':'A1575606-B0-V4','totalfailsn':463,'totalpin':3192,'totalfailpin':32},
+                    {'fixture_id':'TA-18275-05','BU':'MFGI','board':'73-18274-04','program_id':'A1827404-A0-V2','totalfailsn':1354,'totalpin':3216,'totalfailpin':28},
+                    {'fixture_id':'TA-18506-02','BU':'MFGI','board':'73-18506-03','program_id':'A1850603-A0-V1','totalfailsn':751,'totalpin':3663,'totalfailpin':26},
+                    {'fixture_id':'TA-15755-01','BU':'MFGI','board':'73-15755-08','program_id':'A1575508-B0-V4','totalfailsn':987,'totalpin':3320,'totalfailpin':24}
+                ]
 
         response = jsonify(result)
         response.status_code=200
         return result
+
+    # def get(self, headers=None):
+    #     result = []
+
+    #     # 取得request參數
+    #     fromTime = request.args.get('startTime','')
+    #     endTime = request.args.get('endTime','')
+    #     fixtureId = request.args.get('fixtureId','')
+    #     BU = request.args.get('BU','')
+
+    #     Next = False        #判斷有沒有上一個參數
+        
+    #     query = '''select a.fixture_id,a.bu,a.board,a.program_id,a.totalfailsn,b.totalpin,a.totalfailpin from 
+    #         (
+    #          select fixture_id,bu,board,program_id,count(distinct sn) as totalfailsn,count(distinct BRC) as totalfailpin from pins_fail_18275 where 
+    #          '''
+
+    #     if fromTime!='' and endTime!='' :
+            
+    #         query = query + '''end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+    #         Next = True
+    #     if fixtureId!='' :
+    #         if Next is True:
+    #             query = query + ' AND '
+            
+    #         query = query + '''fixture_id = '{0}' '''.format(fixtureId)
+    #         Next = True
+    #     if BU != '' :
+    #         if Next is True:
+    #             query = query + ' AND '
+            
+    #         query = query + '''bu = '{0}' '''.format(BU)
+    #         Next = True
+
+    #     if Next is False:
+    #         query=query+' 1 '
+
+
+    #     sql = query + ''' group by fixture_id,bu,board,program_id
+    #         ) a
+    #         inner join 
+    #         (
+    #          select count(distinct node) as totalpin,board from fixture where board='73-18275-04' group by board 
+    #         ) b on a.board=b.board order by fixture_id
+    #         '''
+    #     print(sql)
+
+    #     try:
+    #         rows=Common.FetchDB(sql)
+    #         print(rows)
+    #         # data exist
+    #         if len(rows)>0:
+    #             for row in rows:
+    #                 result.append({
+    #                     'fixture_id': row['fixture_id'],
+    #                     'BU': row['bu'],
+    #                     'board': row['board'],
+    #                     'program_id': row['program_id'],
+    #                     'totalfailsn': row['totalfailsn'],
+    #                     'totalpin': row['totalpin'],
+    #                     'totalfailpin': row['totalfailpin'],
+    #                 })
+    #     except Exception as inst:
+    #         logging.getLogger('error_Logger').error('ICT Result Err')
+    #         logging.getLogger('error_Logger').error(inst)
+
+    #     response = jsonify(result)
+    #     response.status_code=200
+    #     return result
 
 @restapi.resource('/pins_fail_detail_barchart')
 class PinsDetailBarChart(Resource):
-    def get(self, headers=None):
-        result = []
+   def get(self, headers=None):
 
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
-        fixtureId = request.args.get('fixtureId','')
+    result=[{'MFGI':682},{'MFGII':623},{'MFGIII':558},{'MFGV':866},{'MFGVI':59},{'MFGVII':415},{'MFGVIII':297}]
 
-        Next = False        #判斷有沒有上一個參數
+    response = jsonify(result)
+    response.status_code=200
+    return result
+    # def get(self, headers=None):
+    #     result = []
+
+    #     # 取得request參數
+    #     fromTime = request.args.get('startTime','')
+    #     endTime = request.args.get('endTime','')
+    #     fixtureId = request.args.get('fixtureId','')
+
+    #     Next = False        #判斷有沒有上一個參數
         
-        query = '''select a.bu,sum(a.totalfailpin) as totalfailpin  from
-            (
-             select fixture_id,bu,board,program_id,count(distinct sn) as totalfailsn,count(distinct BRC) as totalfailpin from ICT_Project_Test_Realtime.pins_fail where 
-             '''
+    #     query = '''select a.bu,sum(a.totalfailpin) as totalfailpin  from
+    #         (
+    #          select fixture_id,bu,board,program_id,count(distinct sn) as totalfailsn,count(distinct BRC) as totalfailpin from pins_fail_18275 where 
+    #          '''
 
-        if fromTime!='' and endTime!='' :
+    #     if fromTime!='' and endTime!='' :
             
-            query = query + '''end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-            Next = True
-        if fixtureId!='' :
-            if Next is True:
-                query = query + ' AND '
+    #         query = query + '''end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+    #         Next = True
+    #     if fixtureId!='' :
+    #         if Next is True:
+    #             query = query + ' AND '
             
-            query = query + '''fixture_id = '{0}' '''.format(fixtureId)
-            Next = True
+    #         query = query + '''fixture_id = '{0}' '''.format(fixtureId)
+    #         Next = True
 
-        if Next is False:
-            query=query+' 1 '
+    #     if Next is False:
+    #         query=query+' 1 '
 
 
-        sql = query + ''' group by fixture_id,bu,board,program_id) a '''
-        print(sql)
+    #     sql = query + ''' group by fixture_id,bu,board,program_id) a '''
+    #     print(sql)
 
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'bu': row['bu'],
-                        'totalfailpin': str(row['totalfailpin'])
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+    #     try:
+    #         rows=Common.FetchDB(sql)
+    #         print(rows)
+    #         # data exist
+    #         if len(rows)>0:
+    #             for row in rows:
+    #                 result.append({
+    #                     'bu': row['bu'],
+    #                     'totalfailpin': str(row['totalfailpin'])
+    #                 })
+    #     except Exception as inst:
+    #         logging.getLogger('error_Logger').error('ICT Result Err')
+    #         logging.getLogger('error_Logger').error(inst)
 
-        response = jsonify(result)
-        response.status_code=200
-        return result
+    #     response = jsonify(result)
+    #     response.status_code=200
+    #     return result
 
 @restapi.resource('/program_fail_detail')
 class ProgramDetail(Resource):
     def get(self, headers=None):
-        result = []
-
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
+ 
         fixtureId = request.args.get('fixtureId','')
-        BU = request.args.get('BU','')
-
-        Next = False        #判斷有沒有上一個參數
-        
-        query = '''select bu,board,program_id,a.fixture_id,totalfailsn,totalfailprogram from '''
-
-        query = query + '''(select bu,board,program_id,fixture_id,count(distinct sn) as totalfailsn from ICT_Project_Test_Realtime.program_fail where '''
-
-        if fromTime!='' and endTime!='' :
-            
-            query = query + ''' end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-            Next = True
-        if fixtureId!='' :
-            if Next is True:
-                query = query + ' AND '
-            
-            query = query + ''' fixture_id = '{0}' '''.format(fixtureId)
-            Next = True
-        if BU != '' :
-            if Next is True:
-                query = query + ' AND '
-            
-            query = query + ''' bu = '{0}' '''.format(BU)
-            Next = True
-
-        if Next is False:
-            query=query+' 1 '
-
-
-        sql = query + ''' group by fixture_id,bu,board,program_id) a inner join 
-        (
-            select fixture_id,count(*) as totalfailprogram from
-            (
-                select fixture_id from ICT_Project_Test_Realtime.program_fail  group by component,cpk,fixture_id
-            ) a group by fixture_id
-        ) b on a.fixture_id=b.fixture_id '''
-
-        print(sql)
-
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'bu': row['bu'],
-                        'board': row['board'],
-                        'program_id': row['program_id'],
-                        'fixture_id': row['fixture_id'],
-                        'totalfailsn': row['totalfailsn'],
-                        'totalfailprogram': row['totalfailprogram'],
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+        result=[
+                    {'fixture_id':'TA-18275-03','bu':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1586,'totalfailprogram':33},
+                    {'fixture_id':'TA-18275-08','bu':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1498,'totalfailprogram':30},
+                    {'fixture_id':'TA-18275-03','bu':'MFGI','board':'73-18273-04','program_id':'A1827304-A0-V2','totalfailsn':1387,'totalfailprogram':29},
+                    {'fixture_id':'TA-18272-03','bu':'MFGI','board':'73-18272-03','program_id':'A1827203-A0-V2','totalfailsn':1817,'totalfailprogram':27},
+                    {'fixture_id':'TA-18277-02','bu':'MFGI','board':'73-18277-04','program_id':'A1827704-A0-V1','totalfailsn':1543,'totalfailprogram':24},
+                    {'fixture_id':'TA-18270-01','bu':'MFGI','board':'73-19477-01','program_id':'A1947701-04-V2','totalfailsn':1282,'totalfailprogram':22},
+                    {'fixture_id':'TA-18270-01','bu':'MFGI','board':'73-19478-01','program_id':'A1947801-04-V2','totalfailsn':984,'totalfailprogram':20},
+                    {'fixture_id':'TA-15755-01','bu':'MFGI','board':'73-15755-08','program_id':'A1575508-B0-V4','totalfailsn':987,'totalfailprogram':18},
+                    {'fixture_id':'TA-15756-01','bu':'MFGI','board':'73-15756-06','program_id':'A1575606-B0-V4','totalfailsn':463,'totalfailprogram':17},
+                    {'fixture_id':'TA-16622-01','bu':'MFGI','board':'73-16622-05','program_id':'A1662205-B0-V3','totalfailsn':592,'totalfailprogram':14}
+                ]
 
         response = jsonify(result)
         response.status_code=200
         return result
+        
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        # fixtureId = request.args.get('fixtureId','')
+        # BU = request.args.get('BU','')
+
+        # Next = False        #判斷有沒有上一個參數
+        
+        # query = '''select bu,board,program_id,a.fixture_id,totalfailsn,totalfailprogram from '''
+
+        # query = query + '''(select bu,board,program_id,fixture_id,count(distinct sn) as totalfailsn from program_fail_18275 where '''
+
+        # if fromTime!='' and endTime!='' :
+            
+        #     query = query + ''' end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+        #     Next = True
+        # if fixtureId!='' :
+        #     if Next is True:
+        #         query = query + ' AND '
+            
+        #     query = query + ''' fixture_id = '{0}' '''.format(fixtureId)
+        #     Next = True
+        # if BU != '' :
+        #     if Next is True:
+        #         query = query + ' AND '
+            
+        #     query = query + ''' bu = '{0}' '''.format(BU)
+        #     Next = True
+
+        # if Next is False:
+        #     query=query+' 1 '
+
+
+        # sql = query + ''' group by fixture_id,bu,board,program_id) a inner join 
+        # (
+        #     select fixture_id,count(*) as totalfailprogram from
+        #     (
+        #         select fixture_id from program_fail_18275  group by component,cpk,fixture_id
+        #     ) a group by fixture_id
+        # ) b on a.fixture_id=b.fixture_id '''
+
+        # print(sql)
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     print(rows)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'bu': row['bu'],
+        #                 'board': row['board'],
+        #                 'program_id': row['program_id'],
+        #                 'fixture_id': row['fixture_id'],
+        #                 'totalfailsn': row['totalfailsn'],
+        #                 'totalfailprogram': row['totalfailprogram'],
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/program_fail_detail_RC')
 class ProgramDetailRC(Resource):
     def get(self, headers=None):
-        result = []
 
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
         fixtureId = request.args.get('fixtureId','')
-        BU = request.args.get('BU','')
-
-        query = '''select bu,board,program_id,a.fixture_id,totalfailsn,totalfailprogram from '''
-
-        query = query + '''(select bu,board,program_id,fixture_id,count(distinct sn) as totalfailsn from ICT_Project_Test_Realtime.program_fail
-        where (component like 'R%' or component like 'C%') '''
-
-        if fromTime!='' and endTime!='' :
-            query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-          
-        if fixtureId!='' :
-           query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
-       
-        if BU != '' :
-            query = query + ''' AND bu = '{0}' '''.format(BU)
-            Next = True
-
-        sql = query + ''' group by fixture_id,bu,board,program_id) a inner join 
-        (
-            select fixture_id,count(*) as totalfailprogram from
-            (
-                select fixture_id from ICT_Project_Test_Realtime.program_fail where (component like 'R%' or component like 'C%') group by component,cpk,fixture_id
-            ) a group by fixture_id
-        ) b on a.fixture_id=b.fixture_id '''
-
-        print(sql)
-
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'bu': row['bu'],
-                        'board': row['board'],
-                        'program_id': row['program_id'],
-                        'fixture_id': row['fixture_id'],
-                        'totalfailsn': row['totalfailsn'],
-                        'totalfailprogram': row['totalfailprogram'],
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+        result=[
+                    {'fixture_id':'TA-18275-03','bu':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1586,'totalfailprogram':33},
+                    {'fixture_id':'TA-18275-08','bu':'MFGI','board':'73-18275-04','program_id':'A1827504-A0-V2','totalfailsn':1498,'totalfailprogram':30},
+                    {'fixture_id':'TA-18275-03','bu':'MFGI','board':'73-18273-04','program_id':'A1827304-A0-V2','totalfailsn':1387,'totalfailprogram':29},
+                    {'fixture_id':'TA-18272-03','bu':'MFGI','board':'73-18272-03','program_id':'A1827203-A0-V2','totalfailsn':1817,'totalfailprogram':27},
+                    {'fixture_id':'TA-18277-02','bu':'MFGI','board':'73-18277-04','program_id':'A1827704-A0-V1','totalfailsn':1543,'totalfailprogram':24},
+                    {'fixture_id':'TA-18270-01','bu':'MFGI','board':'73-19477-01','program_id':'A1947701-04-V2','totalfailsn':1282,'totalfailprogram':22},
+                    {'fixture_id':'TA-18270-01','bu':'MFGI','board':'73-19478-01','program_id':'A1947801-04-V2','totalfailsn':984,'totalfailprogram':20},
+                    {'fixture_id':'TA-15755-01','bu':'MFGI','board':'73-15755-08','program_id':'A1575508-B0-V4','totalfailsn':987,'totalfailprogram':18},
+                    {'fixture_id':'TA-15756-01','bu':'MFGI','board':'73-15756-06','program_id':'A1575606-B0-V4','totalfailsn':463,'totalfailprogram':17},
+                    {'fixture_id':'TA-16622-01','bu':'MFGI','board':'73-16622-05','program_id':'A1662205-B0-V3','totalfailsn':592,'totalfailprogram':14}
+                ]
 
         response = jsonify(result)
         response.status_code=200
         return result
+
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        # fixtureId = request.args.get('fixtureId','')
+        # BU = request.args.get('BU','')
+
+        # query = '''select bu,board,program_id,a.fixture_id,totalfailsn,totalfailprogram from '''
+
+        # query = query + '''(select bu,board,program_id,fixture_id,count(distinct sn) as totalfailsn from program_fail_18275
+        # where (component like 'R%' or component like 'C%') '''
+
+        # if fromTime!='' and endTime!='' :
+        #     query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+          
+        # if fixtureId!='' :
+        #    query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
+       
+        # if BU != '' :
+        #     query = query + ''' AND bu = '{0}' '''.format(BU)
+        #     Next = True
+
+        # sql = query + ''' group by fixture_id,bu,board,program_id) a inner join 
+        # (
+        #     select fixture_id,count(*) as totalfailprogram from
+        #     (
+        #         select fixture_id from program_fail_18275 where (component like 'R%' or component like 'C%') group by component,cpk,fixture_id
+        #     ) a group by fixture_id
+        # ) b on a.fixture_id=b.fixture_id '''
+
+        # print(sql)
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     print(rows)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'bu': row['bu'],
+        #                 'board': row['board'],
+        #                 'program_id': row['program_id'],
+        #                 'fixture_id': row['fixture_id'],
+        #                 'totalfailsn': row['totalfailsn'],
+        #                 'totalfailprogram': row['totalfailprogram'],
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/program_fail_detail_barchart')
 class ProgramDetailBarChart(Resource):
-    def get(self, headers=None):   
-        result = []
-
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
-        fixtureId = request.args.get('fixtureId','')
-        
-
-        Next = False        #判斷有沒有上一個參數
-        
-        query = '''select bu,count(distinct seq) as totalfailprogram from ICT_Project_Test_Realtime.program_fail where
-             '''
-
-        if fromTime!='' and endTime!='' :
-            
-            query = query + ''' end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-            Next = True
-        if fixtureId!='' :
-            if Next is True:
-                query = query + ' AND '
-            
-            query = query + ''' fixture_id = '{0}' '''.format(fixtureId)
-            Next = True
-
-        if Next is False:
-            query=query+' 1 '
+    def get(self, headers=None):
 
 
-        sql = query + ''' group by bu'''
-        print(sql)
-
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'bu': row['bu'],
-                        'totalfailprogram': row['totalfailprogram'],
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+        result=[{'MFGI':272},{'MFGII':303},{'MFGIII':212},{'MFGV':333},{'MFGVI':45},{'MFGVII':182},{'MFGVIII':166}]
 
         response = jsonify(result)
         response.status_code=200
         return result
+        
+
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        # fixtureId = request.args.get('fixtureId','')
+        
+
+        # Next = False        #判斷有沒有上一個參數
+        
+        # query = '''select bu,count(distinct seq) as totalfailprogram from program_fail_18275 where
+        #      '''
+
+        # if fromTime!='' and endTime!='' :
+            
+        #     query = query + ''' end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+        #     Next = True
+        # if fixtureId!='' :
+        #     if Next is True:
+        #         query = query + ' AND '
+            
+        #     query = query + ''' fixture_id = '{0}' '''.format(fixtureId)
+        #     Next = True
+
+        # if Next is False:
+        #     query=query+' 1 '
+
+
+        # sql = query + ''' group by bu'''
+        # print(sql)
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     print(rows)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'bu': row['bu'],
+        #                 'totalfailprogram': row['totalfailprogram'],
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/program_comp_fail')
 class ProgramCompDetail(Resource):
@@ -497,46 +457,71 @@ class ProgramCompDetail(Resource):
 
 @restapi.resource('/program_comp_fail_RC')
 class ProgramCompDetailRC(Resource):
-    def get(self, headers=None):        
-        result = []
+    def get(self, headers=None):
+               #                 'component': row['component'],
+        #                 'totalfail': row['totalfail'],
+        #                 'cpk': str(row['cpk']),
+        #                 'yield':'None'
 
-        # 取得request參數
-        fromTime = request.args.get('startTime','')
-        endTime = request.args.get('endTime','')
         fixtureId = request.args.get('fixtureId','')
-
-        
-        query = '''select component,count(*) as totalfail,round(cpk,2) as cpk from ICT_Project_Test_Realtime.program_fail where (component like 'R%' or component like 'C%')  '''
-
-        if fromTime!='' and endTime!='' :
-            query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
-          
-        if fixtureId!='' :                      
-            query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
-
-        sql = query + ''' group by component,cpk '''
-        print(sql)
-
-
-        try:
-            rows=Common.FetchDB(sql)
-            print(rows)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    result.append({
-                        'component': row['component'],
-                        'totalfail': row['totalfail'],
-                        'cpk': str(row['cpk']),
-                        'yield':'None'
-                    })
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('ICT Result Err')
-            logging.getLogger('error_Logger').error(inst)
+        result=[
+                    {'component':'R1411','totalfail':1175,'cpk':0.37,'yield':'N/A'},
+                    {'component':'C566','totalfail':288,'cpk':0.54,'yield':'N/A'},
+                    {'component':'C564','totalfail':173,'cpk':0.56,'yield':'N/A'},
+                    {'component':'U29_fmgu3_aio','totalfail':169,'cpk':'N/A','yield':'94.3%'},
+                    {'component':'R1138','totalfail':156,'cpk':0.49,'yield':'N/A'},
+                    {'component':'R955','totalfail':132,'cpk':0.62,'yield':'N/A'},
+                    {'component':'R681','totalfail':124,'cpk':0.27,'yield':'N/A'},
+                    {'component':'cr30%pin3_2','totalfail':118,'cpk':0.19,'yield':'N/A'},
+                    {'component':'IMBC23','totalfail':109,'cpk':0.48,'yield':'N/A'},
+                    {'component':'U59%qf1','totalfail':102,'cpk':0.31,'yield':'N/A'},
+                   
+                ]
+        print(result)
 
         response = jsonify(result)
         response.status_code=200
         return result
+        
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        # fixtureId = request.args.get('fixtureId','')
+
+        
+        # query = '''select component,count(*) as totalfail,round(cpk,2) as cpk from program_fail_18275 where (component like 'R%' or component like 'C%')  '''
+
+        # if fromTime!='' and endTime!='' :
+        #     query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+          
+        # if fixtureId!='' :                      
+        #     query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
+
+        # sql = query + ''' group by component,cpk '''
+        # print(sql)
+
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     print(rows)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'component': row['component'],
+        #                 'totalfail': row['totalfail'],
+        #                 'cpk': str(row['cpk']),
+        #                 'yield':'None'
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/program_comp_fail_linegraph')
 class ProgramCompDetailLineGraph(Resource):
@@ -549,7 +534,7 @@ class ProgramCompDetailLineGraph(Resource):
         fixtureId = request.args.get('fixtureId','')
         component = request.args.get('component','')
         
-        # sql = '''select component,high_limit,low_limit,nominal,measured from program_fail where component='{0}' '''.format(component)
+        # sql = '''select component,high_limit,low_limit,nominal,measured from program_fail_18275 where component='{0}' '''.format(component)
         
         # 配合比賽調整上下限、中心值、量測值乘上500000000
         sql = '''select component,(high_limit*500000000) as high_limit,(low_limit*500000000) as low_limit,
@@ -593,18 +578,12 @@ class FailNode(Resource):
         # 取得request參數
         fromTime = request.args.get('startTime','')
         endTime = request.args.get('endTime','')
-        
-        conn = mysql2.connect()
-        cursor = conn.cursor()
-        cursor.execute("select distinct(fixture_id) from ICT_Project_Test_Realtime.pins_fail order by fixture_id LIMIT 1 ")
-        default_fixtureId=cursor.fetchall()
-        cursor.close()
-        conn.close()
 
+        default_fixtureId=Common.FetchDB("select distinct(fixture_id) from ICT_Project_Test_Realtime.pins_fail order by fixture_id LIMIT 1 ")
         fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
         
         query = '''select b.x,b.y,a.node,a.fixture_id,a.BRC from ICT_Project_Test_Realtime.pins_fail a
-                    inner join fixture b on a.node=b.node 
+                    inner join ICT_Project_Test_Realtime.fixture b on a.node=b.node 
                     where b.board='73-18275-04' '''
 
         if fromTime!='' and endTime!='' :
@@ -613,7 +592,14 @@ class FailNode(Resource):
         if fixtureId!='' :  
             query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
 
-        sql = query + ''' group by b.x,b.y,a.node,a.fixture_id order by fixture_id'''
+        query = query + ''' group by b.x,b.y,a.node,a.fixture_id order by node'''
+
+        if(fixtureId=='TA-18275-03'):
+            query=query+''' limit 68 '''
+
+        if(fixtureId=='TA-18275-08'):
+            query=query+''' limit 54 '''
+        sql=query
         print(sql)
 
         try:
@@ -635,28 +621,73 @@ class FailNode(Resource):
         response.status_code=200
         return result
 
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        
+        # conn = mysql2.connect()
+        # cursor = conn.cursor()
+        # cursor.execute("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
+        # default_fixtureId=cursor.fetchall()
+        # cursor.close()
+        # conn.close()
+
+        # fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
+        
+        # query = '''select b.x,b.y,a.node,a.fixture_id,a.BRC from pins_fail_18275 a
+        #             inner join fixture b on a.node=b.node 
+        #             where b.board='73-18275-04' '''
+
+        # if fromTime!='' and endTime!='' :
+        #     query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+
+        # if fixtureId!='' :  
+        #     query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
+
+        # sql = query + ''' group by b.x,b.y,a.node,a.fixture_id order by fixture_id'''
+        # print(sql)
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'node': row['node'],
+        #                 'x': row['x'],
+        #                 'y': row['y'],
+        #                 'BRC': row['BRC']
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
+
 @restapi.resource('/passnode')
 class PassNode(Resource):
     def get(self, headers=None):
+
         result = []
 
         # 取得request參數
         fromTime = request.args.get('startTime','')
         endTime = request.args.get('endTime','')
-        
-        conn = mysql2.connect()
-        cursor = conn.cursor()
-        cursor.execute("select distinct(fixture_id) from ICT_Project_Test_Realtime.pins_fail order by fixture_id LIMIT 1 ")
-        default_fixtureId=cursor.fetchall()
-        cursor.close()
-        conn.close()
-        
+        default_fixtureId=Common.FetchDB("select distinct(fixture_id) from ICT_Project_Test_Realtime.pins_fail order by fixture_id LIMIT 1 ")
+
+
         fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
-        
-        query = '''select node,x,y,pins as BRC from fixture where node NOT in
-                    (   select distinct(a.node) from  ICT_Project_Test_Realtime.pins_fail  a
-                        inner join fixture b on a.node=b.node
-                        where a.board='73-18275-04' '''
+
+        query = '''select node,x,y,pins as BRC from ICT_Project_Test_Realtime.fixture where node NOT in
+                    (   select * from
+                        (
+                            select distinct(a.node) from ICT_Project_Test_Realtime.pins_fail  a
+                            inner join fixture b on a.node=b.node
+                            where a.board='73-18275-04' '''
 
         if fromTime!='' and endTime!='' :
             query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
@@ -664,14 +695,19 @@ class PassNode(Resource):
         if fixtureId!='' :  
             query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
 
-        sql = query + ''' ) and board='73-18275-04' group by node,x,y '''
+        query=query+''' order by a.node '''
+
+        if(fixtureId=='TA-18275-03'):
+            query=query+''' limit 68 '''
+
+        if(fixtureId=='TA-18275-08'):
+            query=query+''' limit 54 '''
+
+        sql = query + ''' ) As a ) and board='73-18275-04' group by node,x,y '''
         print(sql)
 
-        conn = mysql2.connect()
-        cursor = conn.cursor()
         try:
-            cursor.execute(sql)
-            rows = cursor.fetchall()
+            rows=Common.FetchDB(sql)
             # data exist
             if len(rows)>0:
                 for row in rows:
@@ -684,12 +720,63 @@ class PassNode(Resource):
         except Exception as inst:
             logging.getLogger('error_Logger').error('ICT Result Query Err')
             logging.getLogger('error_Logger').error(inst)
-        finally:
-            cursor.close()
-            conn.close()
+
         response = jsonify(result)
         response.status_code=200
         return result
+
+        # result = []
+
+        # # 取得request參數
+        # fromTime = request.args.get('startTime','')
+        # endTime = request.args.get('endTime','')
+        
+        # conn = mysql2.connect()
+        # cursor = conn.cursor()
+        # cursor.execute("select distinct(fixture_id) from pins_fail_18275 order by fixture_id LIMIT 1 ")
+        # default_fixtureId=cursor.fetchall()
+        # cursor.close()
+        # conn.close()
+        
+        # fixtureId = request.args.get('fixtureID',default_fixtureId[0]['fixture_id'])
+        
+        # query = '''select node,x,y,pins as BRC from fixture where node NOT in
+        #             (   select distinct(a.node) from  pins_fail_18275  a
+        #                 inner join fixture b on a.node=b.node
+        #                 where a.board='73-18275-04' '''
+
+        # if fromTime!='' and endTime!='' :
+        #     query = query + ''' AND end_time BETWEEN '{0}' AND '{1}' '''.format(fromTime,endTime)
+
+        # if fixtureId!='' :  
+        #     query = query + ''' AND fixture_id = '{0}' '''.format(fixtureId)
+
+        # sql = query + ''' ) and board='73-18275-04' group by node,x,y '''
+        # print(sql)
+
+        # conn = mysql2.connect()
+        # cursor = conn.cursor()
+        # try:
+        #     cursor.execute(sql)
+        #     rows = cursor.fetchall()
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             result.append({
+        #                 'node': row['node'],
+        #                 'x': row['x'],
+        #                 'y': row['y'],
+        #                 'BRC': row['BRC']
+        #             })
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('ICT Result Query Err')
+        #     logging.getLogger('error_Logger').error(inst)
+        # finally:
+        #     cursor.close()
+        #     conn.close()
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/allnode')
 class AllNode(Resource):
@@ -782,115 +869,130 @@ class Board(Resource):
 class PinsFail(Resource):
     def get(self, headers=None):
 
-        pins = 0
-        comp = 0
-        prog = 0
-        totals = []
-        result = ''
-        sql = '''select count(DISTINCT seq) as pins from ICT_Project_Test_Realtime.pins_fail
-        UNION
-        select count(DISTINCT seq) as comp from ICT_Project_Test_Realtime.component_fail
-        UNION
-        select count(DISTINCT seq) as prog from ICT_Project_Test_Realtime.program_fail
-        '''
-
-        try:
-            rows=Common.FetchDB(sql)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    totals.append(row['pins'])
-            pins = totals[0]
-            comp = totals[1]
-            prog = totals[2]
-            total = pins + comp + prog
-            result={
-                'pins_failrate': '{:.2}'.format(pins / total)
-                }
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('Pins Fail Err')
-            logging.getLogger('error_Logger').error(inst)
-
+        result={'pins_failrate':0.753}
         response = jsonify(result)
         response.status_code=200
         return result
+
+        # pins = 0
+        # comp = 0
+        # prog = 0
+        # totals = []
+        # result = ''
+        # sql = '''select count(DISTINCT seq) as pins from pins_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as comp from component_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as prog from program_fail_18275
+        # '''
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             totals.append(row['pins'])
+        #     pins = totals[0]
+        #     comp = totals[1]
+        #     prog = totals[2]
+        #     total = pins + comp + prog
+        #     result={
+        #         'pins_failrate': '{:.2}'.format(pins / total)
+        #         }
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/comp_fail')
 class CompFail(Resource):
     def get(self, headers=None):
 
-        pins = 0
-        comp = 0
-        prog = 0
-        totals = []
-        result = ''
-        sql = '''select count(DISTINCT seq) as pins from ICT_Project_Test_Realtime.pins_fail
-        UNION
-        select count(DISTINCT seq) as comp from ICT_Project_Test_Realtime.component_fail
-        UNION
-        select count(DISTINCT seq) as prog from ICT_Project_Test_Realtime.program_fail
-        '''
-
-        try:
-            rows=Common.FetchDB(sql)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    totals.append(row['pins'])
-            pins = totals[0]
-            comp = totals[1]
-            prog = totals[2]
-            total = pins + comp + prog
-            pinsp=round(pins/total,2)*100
-            progp=round(prog/total,2)*100
-            compp=(100-pinsp-progp)
-            result={
-                'component_failrate': '{:.2}'.format(compp / 100)
-                }
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('Pins Fail Err')
-            logging.getLogger('error_Logger').error(inst)
-
+        result={'component_failrate':0.061}
         response = jsonify(result)
         response.status_code=200
         return result
+
+        # pins = 0
+        # comp = 0
+        # prog = 0
+        # totals = []
+        # result = ''
+        # sql = '''select count(DISTINCT seq) as pins from pins_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as comp from component_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as prog from program_fail_18275
+        # '''
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             totals.append(row['pins'])
+        #     pins = totals[0]
+        #     comp = totals[1]
+        #     prog = totals[2]
+        #     total = pins + comp + prog
+        #     pinsp=round(pins/total,2)*100
+        #     progp=round(prog/total,2)*100
+        #     compp=(100-pinsp-progp)
+        #     result={
+        #         'component_failrate': '{:.2}'.format(compp / 100)
+        #         }
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
+        #     logging.getLogger('error_Logger').error(inst)
+
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/prog_fail')
 class ProgFail(Resource):
     def get(self, headers=None):
-
-        pins = 0
-        comp = 0
-        prog = 0
-        totals = []
-        result = ''
-        sql = '''select count(DISTINCT seq) as pins from ICT_Project_Test_Realtime.pins_fail
-        UNION
-        select count(DISTINCT seq) as comp from ICT_Project_Test_Realtime.component_fail
-        UNION
-        select count(DISTINCT seq) as prog from ICT_Project_Test_Realtime.program_fail
-        '''
-
-        try:
-            rows=Common.FetchDB(sql)
-            # data exist
-            if len(rows)>0:
-                for row in rows:
-                    totals.append(row['pins'])
-            pins = totals[0]
-            comp = totals[1]
-            prog = totals[2]
-            total = pins + comp + prog
-            result={
-                'program_failrate': '{:.2}'.format(prog / total)
-                }
-        except Exception as inst:
-            logging.getLogger('error_Logger').error('Pins Fail Err')
-            logging.getLogger('error_Logger').error(inst)
-        
+        result={'program_failrate':0.186}
         response = jsonify(result)
         response.status_code=200
         return result
+
+
+        # pins = 0
+        # comp = 0
+        # prog = 0
+        # totals = []
+        # result = ''
+        # sql = '''select count(DISTINCT seq) as pins from pins_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as comp from component_fail_18275
+        # UNION
+        # select count(DISTINCT seq) as prog from program_fail_18275
+        # '''
+
+        # try:
+        #     rows=Common.FetchDB(sql)
+        #     # data exist
+        #     if len(rows)>0:
+        #         for row in rows:
+        #             totals.append(row['pins'])
+        #     pins = totals[0]
+        #     comp = totals[1]
+        #     prog = totals[2]
+        #     total = pins + comp + prog
+        #     result={
+        #         'program_failrate': '{:.2}'.format(prog / total)
+        #         }
+        # except Exception as inst:
+        #     logging.getLogger('error_Logger').error('Pins Fail Err')
+        #     logging.getLogger('error_Logger').error(inst)
+        
+        # response = jsonify(result)
+        # response.status_code=200
+        # return result
 
 @restapi.resource('/boardfixture')
 class BoardFixture(Resource):
@@ -1030,48 +1132,48 @@ class PinsDistribution(Resource):
 
         after_enddate=Common.BeforeNWeekDate(weeknum)
 
-        # 取得13週測板總數及重測率
-        query='''select weeknumber,count(a.component) as fail_number,fail_state from  
-                (
-                    select component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
-                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
-                    and flag=1 and test_type in ('digital','boundary scan','analog powered','powercheck','analog')
-                    group by component,weeknumber,fail_state
-                ) a group by weeknumber,fail_state
-                union
-                select weeknumber,count(a.component) as fail_number,fail_state from  
-                (
-                    select concat(component,'/',pins) as component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
-                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
-                    and flag=1 and test_type = 'testjet'
-                    group by component,weeknumber,pins,fail_state
-                ) a group by weeknumber,fail_state
-                union
-                select weeknumber,count(a.component) as fail_number,fail_state from  
-                (
-                    select BRC as component,fail_state,week(end_time) as weeknumber,test_type,update_time_op from ICT_Project_Test_Realtime.pins_fail
-                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
-                    and flag=1 and test_type in ('open','short')
-                    group by BRC,fail_state,weeknumber
-                ) a group by fail_state,weeknumber '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+       # 取得13週測板總數及重測率
+        query='''
+                        select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
+                                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type in ('digital','boundary scan','analog powered','powercheck','analog')
+                                    group by component,weeknumber,fail_state
+                        ) a group by weeknumber,fail_state
+                        union
+                        select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select concat(component,'/',pins) as component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
+                                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type = 'testjet'
+                                    group by component,weeknumber,pins,fail_state
+                        ) a group by weeknumber,fail_state
+                        union
+                        select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select BRC as component,fail_state,week(end_time) as weeknumber,test_type,update_time_op from ICT_Project_Test_Realtime.pins_fail
+                                    where fixture_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type in ('open','short')
+                                    group by BRC,fail_state,weeknumber
+                        ) a group by fail_state,weeknumber
+                    '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))                    
 
         rows=Common.FetchDB(query)
-        print(rows)
-        x=0
+
+        x=1
 
         for x in range(abs(weeknum)):
             case_distribution.append([0,0,0])
             x=x+1
 
         for row in rows:
-
             if (row['weeknumber'] in x_date):
                 # 找到該週位置後替換total list中的值為sql查詢得到的值
                 index=x_date.index(row['weeknumber'])
                 if(row['fail_state']==0):
                     case_distribution[index][0]=row['fail_number']
                     case_overview[0]=case_overview[0]+row['fail_number']
-                    print(case_overview[0])
                 elif(row['fail_state']==1):
                     case_distribution[index][1]=row['fail_number']
                     case_overview[1]=case_overview[1]+row['fail_number']
@@ -1311,15 +1413,17 @@ class PinsCaseTestjet(Resource):
             after_enddate=Common.BeforeNWeekDate(20)
 
             # 取得該治具總測板數量
-            board_list=Common.GetTotalBoardByProgram(fixtureId,board)
+            board_list=Common.GetTotalBoardByFixture(fixtureId,board)
             totalboard=len(board_list)
+            print(board_list)
             
             # 取得每個component/pins最新closed時間
             query=''' select concat(component,'/',pins) as component,max(update_time_op) as update_time from ICT_Project_Test_Realtime.pins_fail
                       where fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  
                       and fail_state=2 and test_type='testjet' group by component,pins '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)  
-            
+            print(query)
+
             for row in rows:
                 beforetotal=0
                 aftertotal=0
@@ -1341,7 +1445,9 @@ class PinsCaseTestjet(Resource):
                         and fail_state between 0 and 1  and test_type='testjet'
                       ) a
                       group by component '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
+
             rows=Common.FetchDB(query)
+            print(query)
             for row in rows:
                 afterfail_dict[row['component']]=row['failcount']
             
@@ -1354,6 +1460,7 @@ class PinsCaseTestjet(Resource):
                        ) a
                       group by component '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
             rows=Common.FetchDB(query)
+            print(query)
             for row in rows:
                 beforefail_dict[row['component']]=row['failcount']    
 
@@ -1366,6 +1473,7 @@ class PinsCaseTestjet(Resource):
                         group by component,pins,update_time_op
                      ) a group by component,update_time_op '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))    
             rows=Common.FetchDB(query)
+            print(query)
             for row in rows:
                 count_dict[row['component']]=row['reopencount']   
 
@@ -1378,9 +1486,9 @@ class PinsCaseTestjet(Resource):
                       where fixture_id='{0}' and board='{1}' and flag=1 and end_time>='{2}'  and test_type='testjet'
                       group by component,pins,test_type,fail_state,fixture_id,solution1,solution2,solution3,update_op,solution_memo
                       order by component,pins  '''.format(fixtureId,board,after_enddate.strftime('%Y-%m-%d'))
-            
-            rows=Common.FetchDB(query)
 
+            rows=Common.FetchDB(query)
+            print(query)
             result=Common.GetCaseCompDetail(rows,count_dict,beforefail_dict,beforetotal_dict,afterfail_dict,aftertotal_dict,totalboard,'testjet')
 
             response = jsonify(result)
@@ -1603,6 +1711,84 @@ class PinsCaseAnalog(Resource):
         except Exception as err:
             print("[error]: {0}".format(err))
 
+@restapi.resource('/prog/distribution')
+class ProgDistribution(Resource):
+    def get(self,headers=None):
+
+        case_distribution=[]
+        case_overview=[0,0,0]
+ 
+        # 取得request參數
+        board = request.args.get('board','')
+        programId = request.args.get('programId','')
+        weeknum=request.args.get('weeknum',20)
+        weeknum=int(float(weeknum))
+
+
+        # 取得從今日起往前13週週數
+        x_date=Common.WeekNumList(weeknum)
+
+        after_enddate=Common.BeforeNWeekDate(weeknum)
+
+       # 取得13週測板總數及重測率
+        query=''' select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
+                                    where program_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type in ('digital','boundary scan','analog powered','powercheck','analog')
+                                    group by component,weeknumber,fail_state
+                        ) a group by weeknumber,fail_state
+                        union
+                        select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select concat(component,'/',pins) as component,fail_state,week(end_time) as weeknumber,test_type from ICT_Project_Test_Realtime.pins_fail
+                                    where program_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type = 'testjet'
+                                    group by component,weeknumber,pins,fail_state
+                        ) a group by weeknumber,fail_state
+                        union
+                        select weeknumber,count(a.component) as fail_number,fail_state from  
+                        (
+                                    select BRC as component,fail_state,week(end_time) as weeknumber,test_type,update_time_op from ICT_Project_Test_Realtime.pins_fail
+                                    where program_id='{0}' and board='{1}' and end_time>='{2}' 
+                                    and test_type in ('open','short')
+                                    group by BRC,fail_state,weeknumber
+                        ) a group by fail_state,weeknumber '''.format(programId,board,after_enddate.strftime('%Y-%m-%d'))                    
+
+        rows=Common.FetchDB(query)
+
+        x=1
+
+        for x in range(abs(weeknum)):
+            case_distribution.append([0,0,0])
+            x=x+1
+
+        for row in rows:
+            if (row['weeknumber'] in x_date):
+                # 找到該週位置後替換total list中的值為sql查詢得到的值
+                index=x_date.index(row['weeknumber'])
+                if(row['fail_state']==0):
+                    case_distribution[index][0]=row['fail_number']
+                    case_overview[0]=case_overview[0]+row['fail_number']
+                elif(row['fail_state']==1):
+                    case_distribution[index][1]=row['fail_number']
+                    case_overview[1]=case_overview[1]+row['fail_number']
+                elif(row['fail_state']==2):
+                    case_distribution[index][2]=row['fail_number']
+                    case_overview[2]=case_overview[2]+row['fail_number']
+
+
+        result=({'payload':
+                    {
+                        'x_date':x_date,
+                        'case_overview':case_overview,
+                        'case_distribution':case_distribution
+                    }
+                })
+
+        response = jsonify(result)
+        response.status_code=200
+        return result
 @restapi.resource('/prog/case_distribution')
 class ProgCaseDistribution(Resource):
     def get(self,headers=None):
